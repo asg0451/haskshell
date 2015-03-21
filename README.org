@@ -14,9 +14,9 @@
 ** Building
    - i havent set this up in cabal yet for ease of development, so compile it manually
    - to compile, just run:
-   #+BEGIN_EXAMPLE
-   make
-   #+END_EXAMPLE
+     #+BEGIN_EXAMPLE
+     make
+     #+END_EXAMPLE
 *** Remember
     To install libraries, run
     #+BEGIN_EXAMPLE
