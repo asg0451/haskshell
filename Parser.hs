@@ -8,6 +8,7 @@ import Data.Char
 import Data.Monoid
 
 import qualified System.Posix.Process as Proc
+import qualified System.Environment as Env
 import Control.Applicative(Applicative(..))
 import Control.Monad (ap)
 
@@ -247,15 +248,18 @@ lexVar cs =
 main = do
   l <- getLine
   let ast = parse $ lexer l
-  out <- eval ast
-  putStrLn $ show out
+--  out <- eval ast
+  putStrLn $ show ast
+--  putStrLn $ show out
   return ()
 
 -- may have side effects, eg running programs
 eval :: Expression -> IO Expression
 eval v@(StrLiteral s) = return v
 eval v@(IntLiteral i) = return v
-eval v@(ComArgs c as) = Proc.executeFile c True as Nothing
+eval v@(ComArgs c as) = Proc.executeFile c True as $ Nothing -- Just [("a", "fish")]
+-- setting 2nd arg to true means use PATH. will we have a PATH given to us without bash?
+-- last arg is env. to use it properly, we need to implement StateT over IO and Maybe
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
