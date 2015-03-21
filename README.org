@@ -12,10 +12,10 @@
      #+END_EXAMPLE
      it may sit there for a while, but it's doing stuff
 ** Building
-   - i havent set this up in cabal yet for easy of development, so compile it manually
-   - to compile this, run:
+   - i havent set this up in cabal yet for ease of development, so compile it manually
+   - to compile, just run:
    #+BEGIN_EXAMPLE
-   happy Parser.y && ghc Parser.hs
+   make
    #+END_EXAMPLE
 *** Remember
     To install libraries, run
