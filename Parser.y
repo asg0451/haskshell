@@ -11,7 +11,7 @@ import Data.Monoid
 import qualified System.Posix.Process as Proc
 import qualified System.Environment as Env
 import qualified Data.Maybe as M
-import Data.Typeable
+import System.IO (hSetBuffering, stdin, BufferMode(..))
 }
 
 -- [var=expr] command opt(;) expr
@@ -46,9 +46,9 @@ Expr: Words                       { ComArgs (head $1) (tail $1) }
     | if Cond then Expr else Expr { IfElse $2 $4 (Just $6) }
     | '(' Expr ')'                { $2 }
     | int                         { IntLiteral $1 }
-    | '"' word '"'                { StrLiteral $2 }
 
 Words: word Words                 { $1 : $2 }
+     | '"' word '"' Words         { $2 : $4 }
      | {- empty -}                { [] }
 
 Cond: Expr '>' Expr               { Gt $1 $3 }
@@ -139,6 +139,7 @@ lexVar cs =
       (var, rest) -> TokWord var : lexer rest
 
 main = do
+  hSetBuffering stdin LineBuffering
   l <- getLine
   let ast = parse $ lexer l
   out <- eval ast
