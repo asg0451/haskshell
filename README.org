@@ -20,5 +20,5 @@
 *** Remember
     To install libraries, run
     #+BEGIN_EXAMPLE
-    cabal install /package/
+    cabal install package
     #+END_EXAMPLE
