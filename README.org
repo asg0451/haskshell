@@ -13,6 +13,12 @@
      it may sit there for a while, but it's doing stuff
 ** Building
    - i havent set this up in cabal yet for easy of development, so compile it manually
-   - to compile this, run: happy Parser.y && ghc Parser.hs
+   - to compile this, run:
+   #+BEGIN_EXAMPLE
+   happy Parser.y && ghc Parser.hs
+   #+END_EXAMPLE
 *** Remember
-    To install libraries, run cabal install /package/
+    To install libraries, run
+    #+BEGIN_EXAMPLE
+    cabal install /package/
+    #+END_EXAMPLE
