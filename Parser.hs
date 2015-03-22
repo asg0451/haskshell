@@ -416,7 +416,7 @@ main = do
   hSetBuffering stdin LineBuffering
   l <- getLine
   let ast = parse $ lexer l
-  out <- runStateT (eval ast) []
+  out <- runStateT (eval ast) [] -- evalStateT to suppress output of state
   putStrLn $ show ast
   putStrLn $ show out
   return ()
