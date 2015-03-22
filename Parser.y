@@ -18,6 +18,7 @@ import qualified Data.Maybe as M
 import System.IO (hSetBuffering, stdin, BufferMode(..))
 }
 
+
 -- parse :: [Token] -> T
 %name parse Expr
 %tokentype { Token }
@@ -65,7 +66,10 @@ data Val  = Str String
             deriving Show
 instance Monoid Val where
     mempty = Null
-    (Str a) `mappend` (Str b) = Str $ unlines [a,b] -- only commands give output right?
+    (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
+    Null    `mappend` Null = Null
+    Null    `mappend` (Str s) = Str s
+    (Str s) `mappend` Null  = Str s
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
@@ -164,7 +168,7 @@ main = do
   hSetBuffering stdin LineBuffering
   l <- getLine
   let ast = parse $ lexer l
-  out <- runStateT (eval ast) []
+  out <- runStateT (eval ast) [] -- evalStateT to suppress output of state
   putStrLn $ show ast
   putStrLn $ show out
   return ()
