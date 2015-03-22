@@ -4,7 +4,6 @@
 
 -- TODO switch from system.posix.process to system.process,
 --      for return val and pipe support
---      also figure out how to
 -- problem -- varRef vs single word commands. possible solution:
 --              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
 
@@ -18,8 +17,6 @@ import qualified System.Environment as Env
 import qualified Data.Maybe as M
 import System.IO (hSetBuffering, stdin, BufferMode(..))
 }
-
--- [var=expr] command opt(;) expr
 
 -- parse :: [Token] -> T
 %name parse Expr
@@ -69,9 +66,6 @@ data Val  = Str String
 instance Monoid Val where
     mempty = Null
     (Str a) `mappend` (Str b) = Str $ unlines [a,b] -- only commands give output right?
-    Null `mappend` Null = Null
-    Null `mappend` (Str s) = Str s
-    (Str s) `mappend` Null  = Str s
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"

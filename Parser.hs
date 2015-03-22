@@ -360,7 +360,7 @@ eval expr = case expr of
               Assign v (IntLiteral i) -> do
                         modify $ \s -> (v, show i) : s
                         return Null
-              ComArgs c [] -> do
+              ComArgs c [] -> do     -- this is wrong. fails on one-word commands. see TODO's
                         env <- get   -- add state to env for process
                         case lookup c env of
                           Just val -> return $ Str val
