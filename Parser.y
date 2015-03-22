@@ -4,9 +4,9 @@
 
 -- TODO switch from system.posix.process to system.process,
 --      for return val and pipe support
+--      hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
 -- problem -- varRef vs single word commands. possible solution:
 --              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
-
 
 import Data.Char
 import Data.Monoid
