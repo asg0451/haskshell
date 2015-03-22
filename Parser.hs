@@ -1,13 +1,18 @@
 {-# OPTIONS_GHC -w #-}
 -- no indents here or else
 
--- TODO make expressions instances of traversable or foldable or something
---      also evaluate anything ever
+
+
 -- TODO switch from system.posix.process to system.process,
 --      for return val and pipe support
+--      also figure out how to
+-- problem -- varRef vs single word commands. possible solution:
+--              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
+
 
 import Data.Char
 import Data.Monoid
+import Control.Monad.State.Lazy
 
 import qualified System.Posix.Process as Proc
 import qualified System.Environment as Env
@@ -25,53 +30,50 @@ data HappyAbsSyn t4 t5 t6
 	| HappyAbsSyn5 t5
 	| HappyAbsSyn6 t6
 
-action_0 (9) = happyShift action_6
-action_0 (11) = happyShift action_3
+action_0 (9) = happyShift action_5
+action_0 (11) = happyShift action_6
 action_0 (12) = happyShift action_7
 action_0 (13) = happyShift action_8
 action_0 (15) = happyShift action_9
-action_0 (4) = happyGoto action_5
+action_0 (4) = happyGoto action_4
 action_0 (5) = happyGoto action_2
 action_0 _ = happyReduce_10
 
-action_1 (11) = happyShift action_3
-action_1 (12) = happyShift action_4
+action_1 (12) = happyShift action_3
 action_1 (5) = happyGoto action_2
 action_1 _ = happyFail
 
 action_2 _ = happyReduce_1
 
-action_3 (12) = happyShift action_16
-action_3 _ = happyFail
+action_3 (12) = happyShift action_3
+action_3 (5) = happyGoto action_12
+action_3 _ = happyReduce_10
 
-action_4 (11) = happyShift action_3
-action_4 (12) = happyShift action_4
-action_4 (5) = happyGoto action_12
-action_4 _ = happyReduce_10
+action_4 (8) = happyShift action_16
+action_4 (18) = happyAccept
+action_4 _ = happyFail
 
-action_5 (8) = happyShift action_15
-action_5 (18) = happyAccept
-action_5 _ = happyFail
+action_5 (9) = happyShift action_5
+action_5 (11) = happyShift action_6
+action_5 (12) = happyShift action_7
+action_5 (13) = happyShift action_8
+action_5 (15) = happyShift action_9
+action_5 (4) = happyGoto action_15
+action_5 (5) = happyGoto action_2
+action_5 _ = happyReduce_10
 
-action_6 (9) = happyShift action_6
-action_6 (11) = happyShift action_3
-action_6 (12) = happyShift action_7
-action_6 (13) = happyShift action_8
-action_6 (15) = happyShift action_9
-action_6 (4) = happyGoto action_14
-action_6 (5) = happyGoto action_2
-action_6 _ = happyReduce_10
+action_6 (12) = happyShift action_14
+action_6 _ = happyFail
 
 action_7 (7) = happyShift action_13
-action_7 (11) = happyShift action_3
-action_7 (12) = happyShift action_4
+action_7 (12) = happyShift action_3
 action_7 (5) = happyGoto action_12
 action_7 _ = happyReduce_10
 
 action_8 _ = happyReduce_7
 
-action_9 (9) = happyShift action_6
-action_9 (11) = happyShift action_3
+action_9 (9) = happyShift action_5
+action_9 (11) = happyShift action_6
 action_9 (12) = happyShift action_7
 action_9 (13) = happyShift action_8
 action_9 (15) = happyShift action_9
@@ -80,17 +82,17 @@ action_9 (5) = happyGoto action_2
 action_9 (6) = happyGoto action_11
 action_9 _ = happyReduce_10
 
-action_10 (8) = happyShift action_15
+action_10 (8) = happyShift action_16
 action_10 (14) = happyShift action_22
 action_10 _ = happyFail
 
 action_11 (17) = happyShift action_21
 action_11 _ = happyFail
 
-action_12 _ = happyReduce_8
+action_12 _ = happyReduce_9
 
-action_13 (9) = happyShift action_6
-action_13 (11) = happyShift action_3
+action_13 (9) = happyShift action_5
+action_13 (11) = happyShift action_6
 action_13 (12) = happyShift action_7
 action_13 (13) = happyShift action_8
 action_13 (15) = happyShift action_9
@@ -98,35 +100,32 @@ action_13 (4) = happyGoto action_20
 action_13 (5) = happyGoto action_2
 action_13 _ = happyReduce_10
 
-action_14 (8) = happyShift action_15
-action_14 (10) = happyShift action_19
+action_14 (11) = happyShift action_19
 action_14 _ = happyFail
 
-action_15 (9) = happyShift action_6
-action_15 (11) = happyShift action_3
-action_15 (12) = happyShift action_7
-action_15 (13) = happyShift action_8
-action_15 (15) = happyShift action_9
-action_15 (4) = happyGoto action_18
-action_15 (5) = happyGoto action_2
-action_15 _ = happyReduce_10
+action_15 (8) = happyShift action_16
+action_15 (10) = happyShift action_18
+action_15 _ = happyFail
 
-action_16 (11) = happyShift action_17
-action_16 _ = happyFail
+action_16 (9) = happyShift action_5
+action_16 (11) = happyShift action_6
+action_16 (12) = happyShift action_7
+action_16 (13) = happyShift action_8
+action_16 (15) = happyShift action_9
+action_16 (4) = happyGoto action_17
+action_16 (5) = happyGoto action_2
+action_16 _ = happyReduce_10
 
-action_17 (11) = happyShift action_3
-action_17 (12) = happyShift action_4
-action_17 (5) = happyGoto action_25
-action_17 _ = happyReduce_10
+action_17 _ = happyReduce_3
 
-action_18 _ = happyReduce_3
+action_18 _ = happyReduce_6
 
-action_19 _ = happyReduce_6
+action_19 _ = happyReduce_8
 
 action_20 _ = happyReduce_2
 
-action_21 (9) = happyShift action_6
-action_21 (11) = happyShift action_3
+action_21 (9) = happyShift action_5
+action_21 (11) = happyShift action_6
 action_21 (12) = happyShift action_7
 action_21 (13) = happyShift action_8
 action_21 (15) = happyShift action_9
@@ -134,8 +133,8 @@ action_21 (4) = happyGoto action_24
 action_21 (5) = happyGoto action_2
 action_21 _ = happyReduce_10
 
-action_22 (9) = happyShift action_6
-action_22 (11) = happyShift action_3
+action_22 (9) = happyShift action_5
+action_22 (11) = happyShift action_6
 action_22 (12) = happyShift action_7
 action_22 (13) = happyShift action_8
 action_22 (15) = happyShift action_9
@@ -143,26 +142,24 @@ action_22 (4) = happyGoto action_23
 action_22 (5) = happyGoto action_2
 action_22 _ = happyReduce_10
 
-action_23 (8) = happyShift action_15
+action_23 (8) = happyShift action_16
 action_23 _ = happyReduce_11
 
-action_24 (8) = happyShift action_15
-action_24 (16) = happyShift action_26
+action_24 (8) = happyShift action_16
+action_24 (16) = happyShift action_25
 action_24 _ = happyReduce_4
 
-action_25 _ = happyReduce_9
+action_25 (9) = happyShift action_5
+action_25 (11) = happyShift action_6
+action_25 (12) = happyShift action_7
+action_25 (13) = happyShift action_8
+action_25 (15) = happyShift action_9
+action_25 (4) = happyGoto action_26
+action_25 (5) = happyGoto action_2
+action_25 _ = happyReduce_10
 
-action_26 (9) = happyShift action_6
-action_26 (11) = happyShift action_3
-action_26 (12) = happyShift action_7
-action_26 (13) = happyShift action_8
-action_26 (15) = happyShift action_9
-action_26 (4) = happyGoto action_27
-action_26 (5) = happyGoto action_2
-action_26 _ = happyReduce_10
-
-action_27 (8) = happyShift action_15
-action_27 _ = happyReduce_5
+action_26 (8) = happyShift action_16
+action_26 _ = happyReduce_5
 
 happyReduce_1 = happySpecReduce_1  4 happyReduction_1
 happyReduction_1 (HappyAbsSyn5  happy_var_1)
@@ -227,23 +224,22 @@ happyReduction_7 (HappyTerminal (TokInt happy_var_1))
 	)
 happyReduction_7 _  = notHappyAtAll 
 
-happyReduce_8 = happySpecReduce_2  5 happyReduction_8
-happyReduction_8 (HappyAbsSyn5  happy_var_2)
+happyReduce_8 = happySpecReduce_3  4 happyReduction_8
+happyReduction_8 _
+	(HappyTerminal (TokWord happy_var_2))
+	_
+	 =  HappyAbsSyn4
+		 (StrLiteral happy_var_2
+	)
+happyReduction_8 _ _ _  = notHappyAtAll 
+
+happyReduce_9 = happySpecReduce_2  5 happyReduction_9
+happyReduction_9 (HappyAbsSyn5  happy_var_2)
 	(HappyTerminal (TokWord happy_var_1))
 	 =  HappyAbsSyn5
 		 (happy_var_1 : happy_var_2
 	)
-happyReduction_8 _ _  = notHappyAtAll 
-
-happyReduce_9 = happyReduce 4 5 happyReduction_9
-happyReduction_9 ((HappyAbsSyn5  happy_var_4) `HappyStk`
-	_ `HappyStk`
-	(HappyTerminal (TokWord happy_var_2)) `HappyStk`
-	_ `HappyStk`
-	happyRest)
-	 = HappyAbsSyn5
-		 (happy_var_2 : happy_var_4
-	) `HappyStk` happyRest
+happyReduction_9 _ _  = notHappyAtAll 
 
 happyReduce_10 = happySpecReduce_0  5 happyReduction_10
 happyReduction_10  =  HappyAbsSyn5
@@ -312,18 +308,30 @@ parse tks = happyRunIdentity happySomeParser where
 happySeq = happyDontSeq
 
 
+type Eval = StateT Env IO -- partial
+type Env  = [(String, String)]
+data Val  = Str String
+          | Null
+            deriving Show
+instance Monoid Val where
+    mempty = Null
+    (Str a) `mappend` (Str b) = Str $ unlines [a,b] -- only commands give output right?
+    Null `mappend` Null = Null
+    Null `mappend` (Str s) = Str s
+    (Str s) `mappend` Null  = Str s
+
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
 data Expression
-    = ComArgs String [String]
+    = ComArgs String [String]  -- if list empty, treat as var ref!
     | Assign String Expression
     | Seq Expression Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
     | IntLiteral Int
     | StrLiteral String
-    | Nullary -- temporary solution
     deriving Show
+
 
 data Condition
     = Gt Expression Expression
@@ -343,32 +351,43 @@ data Token
     | TokThen
       deriving Show
 
--- may have side effects, eg running programs
-eval :: Expression -> IO Expression
-eval v@(StrLiteral s) = return v
-eval v@(IntLiteral i) = return v
-eval v@(ComArgs c as) = do
-  Proc.forkProcess $ Proc.executeFile c True as $ Nothing -- Just [("a", "fish")]
-  return Nullary
--- setting 2nd arg to true means use PATH. will we have a PATH given to us without bash?
--- last arg is env. to use it properly, we need to implement StateT over IO and Maybe
--- using it will overwrite the env passed to it by caller
+-- are all data types strings like in bash?
+-- for now, making everything strings.
+eval :: Expression -> Eval Val
+eval expr = case expr of
+              IntLiteral i -> return $ Str $ show i
+              StrLiteral s -> return $ Str s
+              Assign v (IntLiteral i) -> do
+                        modify $ \s -> (v, show i) : s
+                        return Null
+              ComArgs c [] -> do
+                        env <- get   -- add state to env for process
+                        case lookup c env of
+                          Just val -> return $ Str val
+                          Nothing  -> return Null
+              ComArgs c as -> do
+                        env <- get   -- add state to env for process
+                        let args = map (\a -> maybe a (id) (lookup a env)) as
+                        liftIO $ Proc.forkProcess $ Proc.executeFile c True args $ Just env
+                        return Null
+              Seq a b -> do ra <- eval a
+                            rb <- eval b
+                            return $ ra `mappend` rb
+              IfElse c e1 (Just e2) -> do
+                        b <- evalCond c
+                        if b
+                           then eval e1
+                           else eval e2
+              IfElse c e Nothing -> do
+                        b <- evalCond c
+                        if b
+                           then eval e
+                           else return Null
 
--- i made the decision here to just add a nullary expression type constructor
--- instead of wrapping expressions in maybe. This is a TEMPORARY solution
-eval v@(IfElse c e1 e2) = do
-  cond <- evalCond c
-  return $ if cond
-              then e1
-              else maybe Nullary id e2
-
-evalCond :: Condition -> IO Bool   --- impurity propagates
-evalCond (Gt (StrLiteral s1) (StrLiteral s2)) =
-    return $ (length s1) > (length s2) --for example
-evalCond (Gt (IntLiteral a) (IntLiteral b))   =  return $ a > b
-evalCond (Gt e1 e2) = do a <- eval e1
-                         b <- eval e2
-                         evalCond (Gt a b)
+evalCond :: Condition -> Eval Bool
+evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
+evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ (length a) > (length b)
+-- unfinished
 
 
 lexer :: String -> [Token]
@@ -398,7 +417,7 @@ main = do
   hSetBuffering stdin LineBuffering
   l <- getLine
   let ast = parse $ lexer l
-  out <- eval ast
+  out <- runStateT (eval ast) []
   putStrLn $ show ast
   putStrLn $ show out
   return ()
