@@ -1,5 +1,4 @@
 * About
-- This code was written in emacs, so it may not play nicely with other editors. just make sure that things line up properly (it uses tabs and spaces).
 ** Happy
    - Happy is a parser generator for haskell. like yacc/bison is for C.
    - its lexer equivalent is called Alex, but I haven't implemented the use of it, and idk if we'll need it. We'll see
