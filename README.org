@@ -1,24 +1,29 @@
 * About
-- happy is a parser generator for haskell. like yacc/bison is for C.
-- it was written in emacs, so it may not play nicely with other editors. just make sure that things line up properly
-** Requirements
-- This program requires cabal and happy, and ghc obviously
-- ghc and cabal can be install using pacman on arch, probably apt-get on ubuntu or whatever ari uses
+- This code was written in emacs, so it may not play nicely with other editors. just make sure that things line up properly (it uses tabs and spaces).
 ** Happy
+   - Happy is a parser generator for haskell. like yacc/bison is for C.
+   - its lexer equivalent is called Alex, but I haven't implemented the use of it, and idk if we'll need it. We'll see
    - install happy using:
      #+BEGIN_EXAMPLE
      cabal update
      cabal install happy
      #+END_EXAMPLE
      it may sit there for a while, but it's doing stuff
+** Requirements
+   - This program requires cabal and happy, and ghc obviously
+   - ghc and cabal can be install using pacman on arch, probably apt-get on ubuntu or whatever ari uses
+   - otherwise cabal will take care of libraries when you run the command:
+     #+BEGIN_EXAMPLE
+     cabal install --dependencies-only
+     #+END_EXAMPLE
 ** Building
-   - i havent set this up in cabal yet for ease of development, so compile it manually
+   - Although this is build using cabal to manage dependencies and whatnot, telling cabal to build it didn't seem to re-run happy, so I just have the makefile run happy and then call cabal.
    - to compile, just run:
      #+BEGIN_EXAMPLE
      make
      #+END_EXAMPLE
 *** Remember
-    To install libraries, run
+    To install libraries manually, run
     #+BEGIN_EXAMPLE
     cabal install package
     #+END_EXAMPLE
