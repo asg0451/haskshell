@@ -1,24 +1,9 @@
 {-# OPTIONS_GHC -w #-}
 -- no indents here or else
 
-
-
--- TODO switch from system.posix.process to system.process,
---      for return val and pipe support
---      hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
--- problem -- varRef vs single word commands. possible solution:
---              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
--- TODO make command execution strict in eval
--- TODO make ComArgs take Literals instead of raw strings
+module Parser (plex, Expression(..), Condition(..)) where
 
 import Data.Char
-import Data.Monoid
-import Control.Monad.State.Lazy
-
-import qualified System.Posix.Process as Proc
-import qualified System.Environment as Env
-import qualified Data.Maybe as M
-import System.IO
 import Control.Applicative(Applicative(..))
 import Control.Monad (ap)
 
@@ -36,7 +21,7 @@ action_0 (10) = happyShift action_6
 action_0 (12) = happyShift action_7
 action_0 (13) = happyShift action_8
 action_0 (14) = happyShift action_9
-action_0 (16) = happyShift action_10
+action_0 (18) = happyShift action_10
 action_0 (4) = happyGoto action_4
 action_0 (5) = happyGoto action_2
 action_0 (7) = happyGoto action_5
@@ -53,7 +38,7 @@ action_3 (5) = happyGoto action_13
 action_3 _ = happyReduce_9
 
 action_4 (9) = happyShift action_17
-action_4 (19) = happyAccept
+action_4 (21) = happyAccept
 action_4 _ = happyFail
 
 action_5 _ = happyReduce_7
@@ -62,7 +47,7 @@ action_6 (10) = happyShift action_6
 action_6 (12) = happyShift action_7
 action_6 (13) = happyShift action_8
 action_6 (14) = happyShift action_9
-action_6 (16) = happyShift action_10
+action_6 (18) = happyShift action_10
 action_6 (4) = happyGoto action_16
 action_6 (5) = happyGoto action_2
 action_6 (7) = happyGoto action_5
@@ -76,13 +61,13 @@ action_8 (13) = happyShift action_3
 action_8 (5) = happyGoto action_13
 action_8 _ = happyReduce_9
 
-action_9 _ = happyReduce_11
+action_9 _ = happyReduce_13
 
 action_10 (10) = happyShift action_6
 action_10 (12) = happyShift action_7
 action_10 (13) = happyShift action_8
 action_10 (14) = happyShift action_9
-action_10 (16) = happyShift action_10
+action_10 (18) = happyShift action_10
 action_10 (4) = happyGoto action_11
 action_10 (5) = happyGoto action_2
 action_10 (6) = happyGoto action_12
@@ -91,9 +76,11 @@ action_10 _ = happyReduce_9
 
 action_11 (9) = happyShift action_17
 action_11 (15) = happyShift action_23
+action_11 (16) = happyShift action_24
+action_11 (17) = happyShift action_25
 action_11 _ = happyFail
 
-action_12 (18) = happyShift action_22
+action_12 (20) = happyShift action_22
 action_12 _ = happyFail
 
 action_13 _ = happyReduce_8
@@ -102,7 +89,7 @@ action_14 (10) = happyShift action_6
 action_14 (12) = happyShift action_7
 action_14 (13) = happyShift action_8
 action_14 (14) = happyShift action_9
-action_14 (16) = happyShift action_10
+action_14 (18) = happyShift action_10
 action_14 (4) = happyGoto action_21
 action_14 (5) = happyGoto action_2
 action_14 (7) = happyGoto action_5
@@ -119,7 +106,7 @@ action_17 (10) = happyShift action_6
 action_17 (12) = happyShift action_7
 action_17 (13) = happyShift action_8
 action_17 (14) = happyShift action_9
-action_17 (16) = happyShift action_10
+action_17 (18) = happyShift action_10
 action_17 (4) = happyGoto action_18
 action_17 (5) = happyGoto action_2
 action_17 (7) = happyGoto action_5
@@ -129,7 +116,7 @@ action_18 _ = happyReduce_3
 
 action_19 _ = happyReduce_6
 
-action_20 _ = happyReduce_12
+action_20 _ = happyReduce_14
 
 action_21 _ = happyReduce_2
 
@@ -137,8 +124,8 @@ action_22 (10) = happyShift action_6
 action_22 (12) = happyShift action_7
 action_22 (13) = happyShift action_8
 action_22 (14) = happyShift action_9
-action_22 (16) = happyShift action_10
-action_22 (4) = happyGoto action_25
+action_22 (18) = happyShift action_10
+action_22 (4) = happyGoto action_29
 action_22 (5) = happyGoto action_2
 action_22 (7) = happyGoto action_5
 action_22 _ = happyReduce_9
@@ -147,31 +134,57 @@ action_23 (10) = happyShift action_6
 action_23 (12) = happyShift action_7
 action_23 (13) = happyShift action_8
 action_23 (14) = happyShift action_9
-action_23 (16) = happyShift action_10
-action_23 (4) = happyGoto action_24
+action_23 (18) = happyShift action_10
+action_23 (4) = happyGoto action_28
 action_23 (5) = happyGoto action_2
 action_23 (7) = happyGoto action_5
 action_23 _ = happyReduce_9
 
-action_24 (9) = happyShift action_17
-action_24 _ = happyReduce_10
+action_24 (10) = happyShift action_6
+action_24 (12) = happyShift action_7
+action_24 (13) = happyShift action_8
+action_24 (14) = happyShift action_9
+action_24 (18) = happyShift action_10
+action_24 (4) = happyGoto action_27
+action_24 (5) = happyGoto action_2
+action_24 (7) = happyGoto action_5
+action_24 _ = happyReduce_9
 
-action_25 (9) = happyShift action_17
-action_25 (17) = happyShift action_26
-action_25 _ = happyReduce_4
+action_25 (10) = happyShift action_6
+action_25 (12) = happyShift action_7
+action_25 (13) = happyShift action_8
+action_25 (14) = happyShift action_9
+action_25 (18) = happyShift action_10
+action_25 (4) = happyGoto action_26
+action_25 (5) = happyGoto action_2
+action_25 (7) = happyGoto action_5
+action_25 _ = happyReduce_9
 
-action_26 (10) = happyShift action_6
-action_26 (12) = happyShift action_7
-action_26 (13) = happyShift action_8
-action_26 (14) = happyShift action_9
-action_26 (16) = happyShift action_10
-action_26 (4) = happyGoto action_27
-action_26 (5) = happyGoto action_2
-action_26 (7) = happyGoto action_5
-action_26 _ = happyReduce_9
+action_26 (9) = happyShift action_17
+action_26 _ = happyReduce_12
 
 action_27 (9) = happyShift action_17
-action_27 _ = happyReduce_5
+action_27 _ = happyReduce_11
+
+action_28 (9) = happyShift action_17
+action_28 _ = happyReduce_10
+
+action_29 (9) = happyShift action_17
+action_29 (19) = happyShift action_30
+action_29 _ = happyReduce_4
+
+action_30 (10) = happyShift action_6
+action_30 (12) = happyShift action_7
+action_30 (13) = happyShift action_8
+action_30 (14) = happyShift action_9
+action_30 (18) = happyShift action_10
+action_30 (4) = happyGoto action_31
+action_30 (5) = happyGoto action_2
+action_30 (7) = happyGoto action_5
+action_30 _ = happyReduce_9
+
+action_31 (9) = happyShift action_17
+action_31 _ = happyReduce_5
 
 happyReduce_1 = happySpecReduce_1  4 happyReduction_1
 happyReduction_1 (HappyAbsSyn5  happy_var_1)
@@ -258,24 +271,42 @@ happyReduction_10 (HappyAbsSyn4  happy_var_3)
 	)
 happyReduction_10 _ _ _  = notHappyAtAll 
 
-happyReduce_11 = happySpecReduce_1  7 happyReduction_11
-happyReduction_11 (HappyTerminal (TokInt happy_var_1))
+happyReduce_11 = happySpecReduce_3  6 happyReduction_11
+happyReduction_11 (HappyAbsSyn4  happy_var_3)
+	_
+	(HappyAbsSyn4  happy_var_1)
+	 =  HappyAbsSyn6
+		 (Lt happy_var_1 happy_var_3
+	)
+happyReduction_11 _ _ _  = notHappyAtAll 
+
+happyReduce_12 = happySpecReduce_3  6 happyReduction_12
+happyReduction_12 (HappyAbsSyn4  happy_var_3)
+	_
+	(HappyAbsSyn4  happy_var_1)
+	 =  HappyAbsSyn6
+		 (Eql happy_var_1 happy_var_3
+	)
+happyReduction_12 _ _ _  = notHappyAtAll 
+
+happyReduce_13 = happySpecReduce_1  7 happyReduction_13
+happyReduction_13 (HappyTerminal (TokInt happy_var_1))
 	 =  HappyAbsSyn7
 		 (IntLiteral happy_var_1
 	)
-happyReduction_11 _  = notHappyAtAll 
+happyReduction_13 _  = notHappyAtAll 
 
-happyReduce_12 = happySpecReduce_3  7 happyReduction_12
-happyReduction_12 _
+happyReduce_14 = happySpecReduce_3  7 happyReduction_14
+happyReduction_14 _
 	(HappyTerminal (TokWord happy_var_2))
 	_
 	 =  HappyAbsSyn7
 		 (StrLiteral happy_var_2
 	)
-happyReduction_12 _ _ _  = notHappyAtAll 
+happyReduction_14 _ _ _  = notHappyAtAll 
 
 happyNewToken action sts stk [] =
-	action 19 19 notHappyAtAll (HappyState action) sts stk []
+	action 21 21 notHappyAtAll (HappyState action) sts stk []
 
 happyNewToken action sts stk (tk:tks) =
 	let cont i = action i i tk (HappyState action) sts stk tks in
@@ -288,13 +319,15 @@ happyNewToken action sts stk (tk:tks) =
 	TokWord happy_dollar_dollar -> cont 13;
 	TokInt happy_dollar_dollar -> cont 14;
 	TokGT -> cont 15;
-	TokIf -> cont 16;
-	TokElse -> cont 17;
-	TokThen -> cont 18;
+	TokLT -> cont 16;
+	TokEql -> cont 17;
+	TokIf -> cont 18;
+	TokElse -> cont 19;
+	TokThen -> cont 20;
 	_ -> happyError' (tk:tks)
 	}
 
-happyError_ 19 tk tks = happyError' tks
+happyError_ 21 tk tks = happyError' tks
 happyError_ _ tk tks = happyError' (tk:tks)
 
 newtype HappyIdentity a = HappyIdentity a
@@ -327,18 +360,6 @@ parse tks = happyRunIdentity happySomeParser where
 happySeq = happyDontSeq
 
 
-type Eval = StateT Env IO -- partial
-type Env  = [(String, String)]
-data Val  = Str String
-          | Null
-            deriving Show
-instance Monoid Val where
-    mempty = Null
-    (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
-    Null    `mappend` Null = Null
-    Null    `mappend` (Str s) = Str s
-    (Str s) `mappend` Null  = Str s
-
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
@@ -354,6 +375,8 @@ data Expression
 
 data Condition
     = Gt Expression Expression
+    | Lt Expression Expression
+    | Eql Expression Expression
       deriving Show
 
 data Token
@@ -365,81 +388,41 @@ data Token
     | TokRP
     | TokDQ
     | TokGT
+    | TokLT
+    | TokEql
     | TokIf
     | TokElse
     | TokThen
       deriving Show
-
--- are all data types strings like in bash?
--- for now, making everything strings.
-eval :: Expression -> Eval Val
-eval expr = case expr of
-              IntLiteral i -> return $ Str $ show i
-              StrLiteral s -> return $ Str s
-              Assign v (IntLiteral i) -> do
-                        modify $ \s -> (v, show i) : s
-                        return Null
-              ComArgs c [] -> do     -- this is wrong. fails on one-word commands. see TODO's
-                        env <- get   -- add state to env for process
-                        case lookup c env of
-                          Just val -> return $ Str val
-                          Nothing  -> return Null
-              ComArgs c as -> do
-                        env <- get   -- add state to env for process
-                        let args = map (\a -> maybe a (id) (lookup a env)) as
-                        liftIO $ Proc.forkProcess $ Proc.executeFile c True args $ Just env
-                        return Null
-              Seq a b -> do ra <- eval a
-                            rb <- eval b
-                            return $ ra `mappend` rb
-              IfElse c e1 (Just e2) -> do
-                        b <- evalCond c
-                        if b
-                           then eval e1
-                           else eval e2
-              IfElse c e Nothing -> do
-                        b <- evalCond c
-                        if b
-                           then eval e
-                           else return Null
-
-evalCond :: Condition -> Eval Bool
-evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ (length a) > (length b)
--- unfinished
 
 
 lexer :: String -> [Token]
 lexer [] = []
 lexer (c:cs)
     | isSpace c = lexer cs
-    | isAlpha c = lexVar (c:cs)
+    | isAlpha c || c == '='  = lexVar (c:cs)  -- modified to allow ==
     | isDigit c = lexNum (c:cs)
-lexer ('=':cs) = TokAssign : lexer cs
 lexer (';':cs) = TokSemi : lexer cs
 lexer ('(':cs) = TokLP : lexer cs
 lexer (')':cs) = TokRP : lexer cs
 lexer ('"':cs) = TokDQ : lexer cs
 lexer ('>':cs) = TokGT : lexer cs
+lexer ('<':cs) = TokLT : lexer cs
 
 lexNum cs = TokInt (read num) : lexer rest   -- ints only
     where (num,rest) = span isDigit cs
 
 lexVar cs =
-    case span isAlpha cs of  -- keywords go here
+    case span (\c -> isAlpha c || c == '=' ) cs of  -- keywords go here
       ("if", rest) -> TokIf : lexer rest
-      ("else", rest) -> TokElse : lexer rest
-      ("then", rest) -> TokThen : lexer rest
+      ("else", rest) -> TokElse  : lexer rest
+      ("then", rest) -> TokThen  : lexer rest
+      ("=", rest) -> TokAssign   : lexer rest
+      ("==", rest) -> TokEql     : lexer rest
       (var, rest) -> TokWord var : lexer rest
 
-main = do
-  hSetBuffering stdin LineBuffering
-  l <- getLine
-  let ast = parse $ lexer l
-  out <- runStateT (eval ast) [] -- evalStateT to suppress output of state
-  putStrLn $ show ast
-  putStrLn $ show out
-  return ()
+plex :: String -> Expression
+plex s = parse $ lexer s
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}

@@ -1,23 +1,8 @@
 {  -- no indents here or else
 
-
-
--- TODO switch from system.posix.process to system.process,
---      for return val and pipe support
---      hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
--- problem -- varRef vs single word commands. possible solution:
---              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
--- TODO make command execution strict in eval
--- TODO make ComArgs take Literals instead of raw strings
+module Parser (plex, Expression(..), Condition(..)) where
 
 import Data.Char
-import Data.Monoid
-import Control.Monad.State.Lazy
-
-import qualified System.Posix.Process as Proc
-import qualified System.Environment as Env
-import qualified Data.Maybe as M
-import System.IO
 }
 
 
@@ -35,12 +20,15 @@ import System.IO
         word	{ TokWord $$}
         int     { TokInt $$}
         '>'     { TokGT }
+        '<'     { TokLT }
+        eql     { TokEql }
         if      { TokIf }
         else    { TokElse }
         then    { TokThen }
 
 %left ';' -- precedence bitches
 %left '='
+-- %left else then    -- this line changes precedence of if stmts
 
 %%  --- Productions
 
@@ -52,29 +40,20 @@ Expr: Commands                    { ComArgs (head $1) (tail $1) }
     | '(' Expr ')'                { $2 }
     | Const                       { $1 }
 
-Commands: word Commands           { $1 : $2 }
-     | {- empty -}                { [] }
+Commands: word Commands           { $1 : $2 }  -- cant change this to const until
+    | {- empty -}                 { [] }       -- change Comargs to take Literals
 
 Cond: Expr '>' Expr               { Gt $1 $3 }
+    | Expr '<' Expr               { Lt $1 $3 }
+    | Expr eql Expr               { Eql $1 $3 }
 
-Const: int                         { IntLiteral $1 }
-     | '"' word '"'                { StrLiteral $2 }
+Const: int                        { IntLiteral $1 }
+    | '"' word '"'                { StrLiteral $2 }
 
 
 
 {
 
-type Eval = StateT Env IO -- partial
-type Env  = [(String, String)]
-data Val  = Str String
-          | Null
-            deriving Show
-instance Monoid Val where
-    mempty = Null
-    (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
-    Null    `mappend` Null = Null
-    Null    `mappend` (Str s) = Str s
-    (Str s) `mappend` Null  = Str s
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
@@ -91,6 +70,8 @@ data Expression
 
 data Condition
     = Gt Expression Expression
+    | Lt Expression Expression
+    | Eql Expression Expression
       deriving Show
 
 data Token
@@ -102,80 +83,40 @@ data Token
     | TokRP
     | TokDQ
     | TokGT
+    | TokLT
+    | TokEql
     | TokIf
     | TokElse
     | TokThen
       deriving Show
-
--- are all data types strings like in bash?
--- for now, making everything strings.
-eval :: Expression -> Eval Val
-eval expr = case expr of
-              IntLiteral i -> return $ Str $ show i
-              StrLiteral s -> return $ Str s
-              Assign v (IntLiteral i) -> do
-                        modify $ \s -> (v, show i) : s
-                        return Null
-              ComArgs c [] -> do     -- this is wrong. fails on one-word commands. see TODO's
-                        env <- get   -- add state to env for process
-                        case lookup c env of
-                          Just val -> return $ Str val
-                          Nothing  -> return Null
-              ComArgs c as -> do
-                        env <- get   -- add state to env for process
-                        let args = map (\a -> maybe a (id) (lookup a env)) as
-                        liftIO $ Proc.forkProcess $ Proc.executeFile c True args $ Just env
-                        return Null
-              Seq a b -> do ra <- eval a
-                            rb <- eval b
-                            return $ ra `mappend` rb
-              IfElse c e1 (Just e2) -> do
-                        b <- evalCond c
-                        if b
-                           then eval e1
-                           else eval e2
-              IfElse c e Nothing -> do
-                        b <- evalCond c
-                        if b
-                           then eval e
-                           else return Null
-
-evalCond :: Condition -> Eval Bool
-evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ (length a) > (length b)
--- unfinished
 
 
 lexer :: String -> [Token]
 lexer [] = []
 lexer (c:cs)
     | isSpace c = lexer cs
-    | isAlpha c = lexVar (c:cs)
+    | isAlpha c || c == '='  = lexVar (c:cs)  -- modified to allow ==
     | isDigit c = lexNum (c:cs)
-lexer ('=':cs) = TokAssign : lexer cs
 lexer (';':cs) = TokSemi : lexer cs
 lexer ('(':cs) = TokLP : lexer cs
 lexer (')':cs) = TokRP : lexer cs
 lexer ('"':cs) = TokDQ : lexer cs
 lexer ('>':cs) = TokGT : lexer cs
+lexer ('<':cs) = TokLT : lexer cs
 
 lexNum cs = TokInt (read num) : lexer rest   -- ints only
     where (num,rest) = span isDigit cs
 
 lexVar cs =
-    case span isAlpha cs of  -- keywords go here
+    case span (\c -> isAlpha c || c == '=' ) cs of  -- keywords go here
       ("if", rest) -> TokIf : lexer rest
-      ("else", rest) -> TokElse : lexer rest
-      ("then", rest) -> TokThen : lexer rest
+      ("else", rest) -> TokElse  : lexer rest
+      ("then", rest) -> TokThen  : lexer rest
+      ("=", rest) -> TokAssign   : lexer rest
+      ("==", rest) -> TokEql     : lexer rest
       (var, rest) -> TokWord var : lexer rest
 
-main = do
-  hSetBuffering stdin LineBuffering
-  l <- getLine
-  let ast = parse $ lexer l
-  out <- runStateT (eval ast) [] -- evalStateT to suppress output of state
-  putStrLn $ show ast
-  putStrLn $ show out
-  return ()
+plex :: String -> Expression
+plex s = parse $ lexer s
 
 }

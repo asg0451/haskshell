@@ -1,2 +1,4 @@
 all:
-	happy Parser.y -i && ghc Parser.hs
+	happy Parser.y -i && cabal build
+clean:
+	rm *.hi *.o
