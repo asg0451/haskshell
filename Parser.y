@@ -8,6 +8,7 @@
 -- problem -- varRef vs single word commands. possible solution:
 --              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
 -- TODO make command execution strict in eval
+-- TODO make ComArgs take Literals instead of raw strings
 
 import Data.Char
 import Data.Monoid
@@ -49,13 +50,16 @@ Expr: Commands                    { ComArgs (head $1) (tail $1) }
     | if Cond then Expr           { IfElse $2 $4 Nothing }
     | if Cond then Expr else Expr { IfElse $2 $4 (Just $6) }
     | '(' Expr ')'                { $2 }
-    | int                         { IntLiteral $1 }
-    | '"' word '"'                { StrLiteral $2 }
+    | Const                       { $1 }
 
 Commands: word Commands           { $1 : $2 }
      | {- empty -}                { [] }
 
 Cond: Expr '>' Expr               { Gt $1 $3 }
+
+Const: int                         { IntLiteral $1 }
+     | '"' word '"'                { StrLiteral $2 }
+
 
 
 {
