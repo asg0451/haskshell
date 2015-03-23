@@ -7,6 +7,7 @@
 --      hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
 -- problem -- varRef vs single word commands. possible solution:
 --              make if-stmts only contain exprs if theyre wrapped in brackets of some sort
+-- TODO make command execution strict in eval
 
 import Data.Char
 import Data.Monoid
@@ -15,7 +16,7 @@ import Control.Monad.State.Lazy
 import qualified System.Posix.Process as Proc
 import qualified System.Environment as Env
 import qualified Data.Maybe as M
-import System.IO (hSetBuffering, stdin, BufferMode(..))
+import System.IO
 }
 
 
