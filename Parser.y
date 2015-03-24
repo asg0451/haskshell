@@ -2,6 +2,7 @@
 
 module Parser (plex, Expression(..), Condition(..)) where
 
+import Prelude hiding (head, tail)
 import Data.Char
 }
 
@@ -53,7 +54,12 @@ Const: int                        { IntLiteral $1 }
 
 
 {
+tail :: [a] -> [a]
+tail [] = []
+tail l = drop 1 l
 
+head [] = "not a real command, or a real solution"
+head l = (take 1 l) !! 0
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"

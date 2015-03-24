@@ -26,3 +26,13 @@
     #+BEGIN_EXAMPLE
     cabal install package
     #+END_EXAMPLE
+* TODOs
+  - [ ] switch from system.posix.process to system.process, for return val and pipe support
+    + hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
+  - [ ] problem -- varRef vs single word commands. possible solution:
+    - make if-stmts only contain exprs if theyre wrapped in brackets of some sort
+  - [ ] make ComArgs take Literals instead of raw strings
+  - [ ] think about ambiguity, e.g. 'if 1 == 2 then echo hi ; a = 2' gets parsed as 'if .. then ( echo hi ; a = 2)'
+    - edit %left precedence accordingly
+  - [ ] find a better way to handle empty lines
+  - [ ] start using alex. adding '==' support broke assignment without spaces
