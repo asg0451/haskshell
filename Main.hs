@@ -1,7 +1,7 @@
 module Main where
 import           Control.Monad            (void)
 import           Control.Monad.State.Lazy
-import           Data.Maybe               (fromJust)
+import           Data.Maybe               (fromJust, fromMaybe)
 import           Data.Monoid
 import           Parser
 import           System.Console.Readline  (readline)
@@ -39,7 +39,7 @@ eval expr = case expr of
                           Nothing  -> return Null
               ComArgs c as -> do
                         env <- get   -- add state to env for process
-                        let args = map (\a -> maybe a id (lookup a env)) as
+                        let args = map (\a -> fromMaybe a (lookup a env)) as
                         liftIO $ Proc.forkProcess
                                    $ Proc.executeFile c True args $ Just env
                         return Null  -- return return value of command eventually

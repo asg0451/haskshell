@@ -59,7 +59,7 @@ tail [] = []
 tail l = drop 1 l
 
 head [] = "not a real command, or a real solution"
-head l = (take 1 l) !! 0
+head l = take 1 l !! 0
 
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
