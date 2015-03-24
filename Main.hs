@@ -1,6 +1,5 @@
 module Main where
 import           Control.Monad            (void)
-import           Control.Monad.Loops      (iterateWhile)
 import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust)
 import           Data.Monoid
