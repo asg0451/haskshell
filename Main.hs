@@ -13,6 +13,7 @@ type Env  = [(String, String)]
 data Val  = Str String
           | Null
             deriving Show
+
 instance Monoid Val where
     mempty = Null
     (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
@@ -87,17 +88,3 @@ iterateM_ f = g
     where g x = case x of
                   Nothing -> return Nothing
                   Just z  -> f (Just z) >>= g
-
-
-
--- main = do
---   hSetBuffering stdin LineBuffering
---   l <- getLine -- readline ">> "
---   l2 <- getLine -- readline ">> "
---   let ast = plex l
---   let ast2 = plex l2
---   out <- runStateT ((eval ast) >> (eval ast2)) [] -- evalStateT suppresses state
---   putStrLn $ show ast
---   putStrLn $ show out
---
---   return ()

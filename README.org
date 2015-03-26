@@ -1,15 +1,16 @@
 * About
 ** Happy
    - Happy is a parser generator for haskell. like yacc/bison is for C.
-   - its lexer equivalent is called Alex, but I haven't implemented the use of it, and idk if we'll need it. We'll see
-   - install happy using:
+   - its lexer equivalent is called Alex, which i just implemented use of
+   - install happy and alex using:
      #+BEGIN_EXAMPLE
      cabal update
      cabal install happy
+     cabal install alex
      #+END_EXAMPLE
      it may sit there for a while, but it's doing stuff
 ** Requirements
-   - This program requires cabal and happy, and ghc obviously
+   - This program requires cabal, alex and happy, and ghc obviously
    - ghc and cabal can be install using pacman on arch, probably apt-get on ubuntu or whatever ari uses
    - otherwise cabal will take care of libraries when you run the command:
      #+BEGIN_EXAMPLE
@@ -35,4 +36,4 @@
   - [ ] think about ambiguity, e.g. 'if 1 == 2 then echo hi ; a = 2' gets parsed as 'if .. then ( echo hi ; a = 2)'
     - edit %left precedence accordingly
   - [ ] find a better way to handle empty lines
-  - [ ] start using alex. adding '==' support broke assignment without spaces
+  - [X] start using alex. adding '==' support broke assignment without spaces
