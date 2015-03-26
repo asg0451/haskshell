@@ -4,6 +4,7 @@ module Parser (plex, Expression(..), Condition(..)) where
 
 import Prelude hiding (head, tail)
 import Data.Char
+import Lexer (lexer, Token(..))
 }
 
 
@@ -64,6 +65,7 @@ head l = take 1 l !! 0
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
+
 data Expression
     = ComArgs String [String]  -- if list empty, treat as var ref!
     | Assign String Expression
@@ -73,56 +75,13 @@ data Expression
     | StrLiteral String
     deriving Show
 
-
 data Condition
     = Gt Expression Expression
     | Lt Expression Expression
     | Eql Expression Expression
       deriving Show
 
-data Token
-    = TokAssign
-    | TokWord String
-    | TokInt Int
-    | TokSemi
-    | TokLP
-    | TokRP
-    | TokDQ
-    | TokGT
-    | TokLT
-    | TokEql
-    | TokIf
-    | TokElse
-    | TokThen
-      deriving Show
-
-
-lexer :: String -> [Token]
-lexer [] = []
-lexer (c:cs)
-    | isSpace c = lexer cs
-    | isAlpha c || c == '='  = lexVar (c:cs)  -- modified to allow ==
-    | isDigit c = lexNum (c:cs)
-lexer (';':cs) = TokSemi : lexer cs
-lexer ('(':cs) = TokLP : lexer cs
-lexer (')':cs) = TokRP : lexer cs
-lexer ('"':cs) = TokDQ : lexer cs
-lexer ('>':cs) = TokGT : lexer cs
-lexer ('<':cs) = TokLT : lexer cs
-
-lexNum cs = TokInt (read num) : lexer rest   -- ints only
-    where (num,rest) = span isDigit cs
-
-lexVar cs =
-    case span (\c -> isAlpha c || c == '=' ) cs of  -- keywords go here
-      ("if", rest) -> TokIf : lexer rest
-      ("else", rest) -> TokElse  : lexer rest
-      ("then", rest) -> TokThen  : lexer rest
-      ("=", rest) -> TokAssign   : lexer rest
-      ("==", rest) -> TokEql     : lexer rest
-      (var, rest) -> TokWord var : lexer rest
-
 plex :: String -> Expression
-plex s = parse $ lexer s
+plex = (parse . lexer)
 
 }
