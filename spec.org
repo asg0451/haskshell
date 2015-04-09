@@ -1,1 +1,4 @@
 * Syntax
+
+* Features to be implemented
+  - vty ac instead of curses
