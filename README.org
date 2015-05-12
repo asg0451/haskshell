@@ -18,9 +18,13 @@
      #+END_EXAMPLE
 ** Building
    - Although this is build using cabal to manage dependencies and whatnot, telling cabal to build it didn't seem to re-run happy, so I just have the makefile run happy and then call cabal.
-   - to compile, just run:
+   - to compile if you have modified ~Parser.y~ or ~Lexer.x~, just run:
      #+BEGIN_EXAMPLE
      make
+     #+END_EXAMPLE
+   - If you have just modified ~Main.hs~ or another file that doesn't exist yet, you can just run
+     #+BEGIN_EXAMPLE
+     cabal build
      #+END_EXAMPLE
 *** Remember
     To install libraries manually, run
