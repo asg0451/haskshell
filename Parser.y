@@ -34,27 +34,36 @@ import Lexer (lexer, Token(..))
 
 %%  --- Productions
 
-Expr: Commands                    { ComArgs (head $1) (tail $1) }
-    | word '=' Expr               { Assign $1 $3 }
+Expr: Args                        { ComArgs (head $1) (tail $1) }
+    | ConstStr '=' Const          { Assign (fromLit $1) $3 }
     | Expr ';' Expr               { Seq $1 $3 }
     | if Cond then Expr           { IfElse $2 $4 Nothing }
     | if Cond then Expr else Expr { IfElse $2 $4 (Just $6) }
     | '(' Expr ')'                { $2 }
-    | Const                       { $1 }
+    | {- empty -}                 { Empty }
 
-Commands: word Commands           { $1 : $2 }  -- cant change this to const until
-    | {- empty -}                 { [] }       -- change Comargs to take Literals
+Args: Const                       { [(fromLit $1)] }
+    | Const Args                  { (fromLit $1) : $2 }
 
-Cond: Expr '>' Expr               { Gt $1 $3 }
-    | Expr '<' Expr               { Lt $1 $3 }
-    | Expr eql Expr               { Eql $1 $3 }
+Cond: Const '>' Const             { Gt $1 $3 }    -- at the moment functionality is limited to consts
+    | Const '<' Const             { Lt $1 $3 }
+    | Const eql Const             { Eql $1 $3 }
 
-Const: int                        { IntLiteral $1 }
-    | '"' word '"'                { StrLiteral $2 }
+Const: ConstInt                   { $1 }
+     | ConstStr                   { $1 }
 
+ConstInt: int                     { IntLiteral $1 }
 
+ConstStr: '"' word '"'            { StrLiteral $2 }
+        | word                    { StrLiteral $1 }
 
 {
+
+fromLit :: Expression -> String
+fromLit e = case e of
+                StrLiteral s -> s
+                IntLiteral i -> show i
+
 tail :: [a] -> [a]
 tail [] = []
 tail l = drop 1 l
@@ -65,6 +74,7 @@ head l = take 1 l !! 0
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
+-- todo seperate Expression into 2 datatypes: Expression and Constant
 
 data Expression
     = ComArgs String [String]  -- if list empty, treat as var ref!
@@ -73,6 +83,7 @@ data Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
     | IntLiteral Int
     | StrLiteral String
+    | Empty
     deriving Show
 
 data Condition

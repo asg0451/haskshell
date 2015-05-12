@@ -19,7 +19,7 @@ executable Haskshell
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:
-  ghc-options:         -O2 -fwarn-unused-imports
+  ghc-options:         -O2 -fwarn-unused-imports -threaded
   build-depends:       base >=4.7
                      , mtl >=2.1
 --                     , unix >=2.7 && <2.8

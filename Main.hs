@@ -1,12 +1,10 @@
 module Main where
-import           Control.Monad            (void)
 import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust, fromMaybe)
-import           Data.Monoid
 import           Parser
 import           System.Console.Readline  (readline, addHistory)
-import           System.IO
-import           System.Process
+import           System.Process hiding (proc)
+
 
 type Eval = StateT Env IO   -- partial type, takes an a value
 type Env  = [(String, String)]
@@ -21,7 +19,6 @@ instance Monoid Val where  -- todo: make it so that failed commands have some au
     Null    `mappend` x = x
 
 
--- are all data types strings like in bash?
 -- for now, making everything strings.
 eval :: Expression -> Eval Val
 eval expr = case expr of
@@ -41,9 +38,9 @@ eval expr = case expr of
               ComArgs c as -> do
                         env <- get   -- add state to env for process
                         let args = map (\a -> fromMaybe a (lookup a env)) as
-                        (_, _, _, h) <- liftIO $ createProcess $ proc c args  -- todo use custom spawner to restrict envs?
+                        (_, _, _, h) <- liftIO $ createProcess $ proc env c args
                         retVal <- liftIO $ waitForProcess h  -- synchronous
-                        return $ Str $ show retVal  -- return return value of command eventually
+                        return $ Str $ show retVal
               Seq a b -> do ra <- eval a
                             rb <- eval b
                             return $ ra `mappend` rb
@@ -57,6 +54,8 @@ eval expr = case expr of
                         if b
                            then eval e
                            else return Null
+              Empty -> return Null
+
 
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
@@ -75,16 +74,28 @@ main = void
                                 case line of
                                  Just l -> do addHistory l  -- for readline
                                               let ast = plex l
-                                              out <- runStateT (eval ast) (fromJust prev)
-                                              let laststate = snd out
                                               print ast
+                                              out <- runStateT (eval ast) (fromJust prev)
                                               print out
+                                              let laststate = snd out
                                               return $ Just laststate
                                  Nothing -> return Nothing
-                   ) $ Just [] -- initial env is empty for now
+                   ) $ Just [("PATH", ".:/bin:/usr/bin"), ("test", "fish")] -- initial env is empty for now
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
     where g x = case x of
                   Nothing -> return Nothing
                   Just z  -> f (Just z) >>= g
+
+proc :: Env -> FilePath -> [String] -> CreateProcess
+proc env cmd args = CreateProcess { cmdspec = RawCommand cmd args
+                                  , cwd = Just "."
+                                  , env = Just env
+                                  , std_in = Inherit
+                                  , std_out = Inherit
+                                  , std_err = Inherit
+                                  , close_fds = False
+                                  , create_group = False
+                                  , delegate_ctlc = False
+                                  }
