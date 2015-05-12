@@ -14,7 +14,7 @@ data Val  = Str String
           | Null
             deriving Show
 
-instance Monoid Val where
+instance Monoid Val where  -- todo: make it so that failed commands have some authority
     mempty = Null
     (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
     (Str a) `mappend` Null = Str a
@@ -28,7 +28,7 @@ eval expr = case expr of
               IntLiteral i -> return $ Str $ show i
               StrLiteral s -> return $ Str s
               Assign v (IntLiteral i) -> do
-                        modify $ \s -> (v, show i) : s
+                        modify $ \s -> (v, show i) : s  -- add name, value pair to env
                         return $ Str $ show i
               Assign v (StrLiteral s) -> do
                         modify $ \st -> (v, s) : st
@@ -41,7 +41,7 @@ eval expr = case expr of
               ComArgs c as -> do
                         env <- get   -- add state to env for process
                         let args = map (\a -> fromMaybe a (lookup a env)) as
-                        (_, _, _, h) <- liftIO $ createProcess $ proc c args
+                        (_, _, _, h) <- liftIO $ createProcess $ proc c args  -- todo use custom spawner to restrict envs?
                         retVal <- liftIO $ waitForProcess h  -- synchronous
                         return $ Str $ show retVal  -- return return value of command eventually
               Seq a b -> do ra <- eval a
@@ -76,14 +76,12 @@ main = void
                                  Just l -> do addHistory l  -- for readline
                                               let ast = plex l
                                               out <- runStateT (eval ast) (fromJust prev)
-                                              -- prev gets checked for Nothingness
-                                              -- in iterateM_
                                               let laststate = snd out
                                               print ast
                                               print out
                                               return $ Just laststate
                                  Nothing -> return Nothing
-                   ) $ Just []
+                   ) $ Just [] -- initial env is empty for now
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
