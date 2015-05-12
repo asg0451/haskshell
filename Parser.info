@@ -18,8 +18,8 @@ Grammar
 	Expr ->                                            (7)
 	Args -> Const                                      (8)
 	Args -> Const Args                                 (9)
-	Cond -> Const '>' Const                            (10)
-	Cond -> Const '<' Const                            (11)
+	Cond -> Const gt Const                             (10)
+	Cond -> Const lt Const                             (11)
 	Cond -> Const eql Const                            (12)
 	Const -> ConstInt                                  (13)
 	Const -> ConstStr                                  (14)
@@ -37,8 +37,8 @@ Terminals
 	'"'            { TokDQ }
 	word           { TokWord $$ }
 	int            { TokInt $$ }
-	'>'            { TokGT }
-	'<'            { TokLT }
+	gt             { TokGT }
+	lt             { TokLT }
 	eql            { TokEql }
 	if             { TokIf }
 	else           { TokElse }
@@ -124,8 +124,8 @@ State 4
 	'"'            reduce using rule 13
 	word           reduce using rule 13
 	int            reduce using rule 13
-	'>'            reduce using rule 13
-	'<'            reduce using rule 13
+	gt             reduce using rule 13
+	lt             reduce using rule 13
 	eql            reduce using rule 13
 	else           reduce using rule 13
 	then           reduce using rule 13
@@ -141,8 +141,8 @@ State 5
 	'"'            reduce using rule 14
 	word           reduce using rule 14
 	int            reduce using rule 14
-	'>'            reduce using rule 14
-	'<'            reduce using rule 14
+	gt             reduce using rule 14
+	lt             reduce using rule 14
 	eql            reduce using rule 14
 	else           reduce using rule 14
 	then           reduce using rule 14
@@ -166,8 +166,8 @@ State 7
 	'"'            reduce using rule 17
 	word           reduce using rule 17
 	int            reduce using rule 17
-	'>'            reduce using rule 17
-	'<'            reduce using rule 17
+	gt             reduce using rule 17
+	lt             reduce using rule 17
 	eql            reduce using rule 17
 	else           reduce using rule 17
 	then           reduce using rule 17
@@ -183,8 +183,8 @@ State 8
 	'"'            reduce using rule 15
 	word           reduce using rule 15
 	int            reduce using rule 15
-	'>'            reduce using rule 15
-	'<'            reduce using rule 15
+	gt             reduce using rule 15
+	lt             reduce using rule 15
 	eql            reduce using rule 15
 	else           reduce using rule 15
 	then           reduce using rule 15
@@ -257,12 +257,12 @@ State 13
 
 State 14
 
-	Cond -> Const . '>' Const                           (rule 10)
-	Cond -> Const . '<' Const                           (rule 11)
+	Cond -> Const . gt Const                            (rule 10)
+	Cond -> Const . lt Const                            (rule 11)
 	Cond -> Const . eql Const                           (rule 12)
 
-	'>'            shift, and enter state 24
-	'<'            shift, and enter state 25
+	gt             shift, and enter state 24
+	lt             shift, and enter state 25
 	eql            shift, and enter state 26
 
 
@@ -334,8 +334,8 @@ State 20
 	'"'            reduce using rule 16
 	word           reduce using rule 16
 	int            reduce using rule 16
-	'>'            reduce using rule 16
-	'<'            reduce using rule 16
+	gt             reduce using rule 16
+	lt             reduce using rule 16
 	eql            reduce using rule 16
 	else           reduce using rule 16
 	then           reduce using rule 16
@@ -375,7 +375,7 @@ State 23
 
 State 24
 
-	Cond -> Const '>' . Const                           (rule 10)
+	Cond -> Const gt . Const                            (rule 10)
 
 	'"'            shift, and enter state 6
 	word           shift, and enter state 7
@@ -387,7 +387,7 @@ State 24
 
 State 25
 
-	Cond -> Const '<' . Const                           (rule 11)
+	Cond -> Const lt . Const                            (rule 11)
 
 	'"'            shift, and enter state 6
 	word           shift, and enter state 7
@@ -455,14 +455,14 @@ State 29
 
 State 30
 
-	Cond -> Const '<' Const .                           (rule 11)
+	Cond -> Const lt Const .                            (rule 11)
 
 	then           reduce using rule 11
 
 
 State 31
 
-	Cond -> Const '>' Const .                           (rule 10)
+	Cond -> Const gt Const .                            (rule 10)
 
 	then           reduce using rule 10
 

@@ -21,8 +21,8 @@ import Lexer (lexer, Token(..))
         '"'	{ TokDQ }
         word	{ TokWord $$}
         int     { TokInt $$}
-        '>'     { TokGT }
-        '<'     { TokLT }
+        gt      { TokGT }
+        lt      { TokLT }
         eql     { TokEql }
         if      { TokIf }
         else    { TokElse }
@@ -45,8 +45,8 @@ Expr: Args                        { ComArgs (head $1) (tail $1) }
 Args: Const                       { [(fromLit $1)] }
     | Const Args                  { (fromLit $1) : $2 }
 
-Cond: Const '>' Const             { Gt $1 $3 }    -- at the moment functionality is limited to consts
-    | Const '<' Const             { Lt $1 $3 }
+Cond: Const gt Const              { Gt $1 $3 }    -- at the moment functionality is limited to consts
+    | Const lt Const              { Lt $1 $3 }
     | Const eql Const             { Eql $1 $3 }
 
 Const: ConstInt                   { $1 }

@@ -13,8 +13,8 @@ tokens :-
     "--".*				;
     $digit+				{ \s -> TokInt (read s) }
     [\=]				{ const TokAssign }
-    [\<]				{ const TokGT }
-    [\>]				{ const TokLT }
+    [\>]				{ const TokGT }
+    [\<]				{ const TokLT }
     [\;]				{ const TokSemi }
     [\(]				{ const TokLP }
     [\)]				{ const TokRP }
