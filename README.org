@@ -27,13 +27,18 @@
     #+BEGIN_EXAMPLE
     cabal install package
     #+END_EXAMPLE
+** Running
+   - to be able to use the PATH variable properly, the program must be invoked with a modified PATH variable (for some reason, unknown), e.g. ~env -i ./dist/build/Haskshell/Haskshell~ or ~PATH=$PATH ./dist/build/Haskshell/Haskshell~. Why? - no idea, have not looked into it yet.
 * TODOs
-  - [ ] switch from system.posix.process to system.process, for return val and pipe support
+  - [X] switch from system.posix.process to system.process, for return val and pipe support
     + hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
   - [ ] problem -- varRef vs single word commands. possible solution:
     - make if-stmts only contain exprs if theyre wrapped in brackets of some sort
-  - [ ] make ComArgs take Literals instead of raw strings
+  - [ ] make ComArgs take Literals instead of raw strings ?
   - [ ] think about ambiguity, e.g. 'if 1 == 2 then echo hi ; a = 2' gets parsed as 'if .. then ( echo hi ; a = 2)'
     - edit %left precedence accordingly
-  - [ ] find a better way to handle empty lines
+  - [X] find a better way to handle empty lines
   - [X] start using alex. adding '==' support broke assignment without spaces
+  - [ ] seperate Expression datatype into Expression and Literal?
+  - [ ] make variable evaluation explicit
+  - [ ] other things that are listed throughout the code

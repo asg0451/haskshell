@@ -69,18 +69,18 @@ evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 -- unfinished
 
 main :: IO ()
-main = void
-       $ iterateM_ (\prev -> do line <- readline ">> "
-                                case line of
-                                 Just l -> do addHistory l  -- for readline
-                                              let ast = plex l
-                                              print ast
-                                              out <- runStateT (eval ast) (fromJust prev)
-                                              print out
-                                              let laststate = snd out
-                                              return $ Just laststate
-                                 Nothing -> return Nothing
-                   ) $ Just [("PATH", ".:/bin:/usr/bin"), ("test", "fish")] -- initial env is empty for now
+main = void $
+       iterateM_ (\prev -> do line <- readline ">> "
+                              case line of
+                               Just l -> do addHistory l  -- for readline
+                                            let ast = plex l
+                                            print ast
+                                            out <- runStateT (eval ast) (fromJust prev)
+                                            print out
+                                            let laststate = snd out
+                                            return $ Just laststate
+                               Nothing -> return Nothing
+                 ) $ Just [("PATH", ".:/bin:/usr/bin"), ("test", "fish")] -- initial env is empty for now
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
