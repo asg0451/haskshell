@@ -4,9 +4,9 @@ import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust, fromMaybe)
 import           Data.Monoid
 import           Parser
-import           System.Console.Readline  (readline)
+import           System.Console.Readline  (readline, addHistory)
 import           System.IO
-import qualified System.Posix.Process     as Proc
+import           System.Process
 
 type Eval = StateT Env IO   -- partial type, takes an a value
 type Env  = [(String, String)]
@@ -31,7 +31,7 @@ eval expr = case expr of
                         modify $ \s -> (v, show i) : s
                         return $ Str $ show i
               Assign v (StrLiteral s) -> do
-                        modify $ \state -> (v, s) : state
+                        modify $ \st -> (v, s) : st
                         return $ Str s
               ComArgs c [] -> do     -- this is wrong. see TODO's
                         env <- get   -- add state to env for process
@@ -41,9 +41,9 @@ eval expr = case expr of
               ComArgs c as -> do
                         env <- get   -- add state to env for process
                         let args = map (\a -> fromMaybe a (lookup a env)) as
-                        liftIO $ Proc.forkProcess
-                                   $ Proc.executeFile c True args $ Just env
-                        return Null  -- return return value of command eventually
+                        (_, _, _, h) <- liftIO $ createProcess $ proc c args
+                        retVal <- liftIO $ waitForProcess h  -- synchronous
+                        return $ Str $ show retVal  -- return return value of command eventually
               Seq a b -> do ra <- eval a
                             rb <- eval b
                             return $ ra `mappend` rb
@@ -60,27 +60,29 @@ eval expr = case expr of
 
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ (length a) > (length b)
+evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ length a > length b
 
 evalCond (Lt (IntLiteral a) (IntLiteral b)) = return $ a < b
-evalCond (Lt (StrLiteral a) (StrLiteral b)) = return $ (length a) < (length b)
+evalCond (Lt (StrLiteral a) (StrLiteral b)) = return $ length a < length b
 
 evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
-evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ (length a) == (length b)
+evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 -- unfinished
 
+main :: IO ()
 main = void
        $ iterateM_ (\prev -> do line <- readline ">> "
                                 case line of
-                                  Just l -> do let ast = plex l
-                                               out <- runStateT (eval ast) (fromJust prev)
-                                               -- prev gets checked for Nothingness
-                                               -- in iterateM_
-                                               let laststate = snd out
-                                               print ast
-                                               print out
-                                               return $ Just laststate
-                                  Nothing -> return Nothing
+                                 Just l -> do addHistory l  -- for readline
+                                              let ast = plex l
+                                              out <- runStateT (eval ast) (fromJust prev)
+                                              -- prev gets checked for Nothingness
+                                              -- in iterateM_
+                                              let laststate = snd out
+                                              print ast
+                                              print out
+                                              return $ Just laststate
+                                 Nothing -> return Nothing
                    ) $ Just []
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)

@@ -5,7 +5,7 @@ module Lexer (lexer, Token(..)) where
 %wrapper "basic"
 
 $digit = 0-9
-$alpha = [a-zA-Z]
+$alpha = [a-zA-Z\._]
 
 tokens :-
 
