@@ -5,10 +5,9 @@ import           Parser
 import           System.Console.Readline  (readline, addHistory)
 import           System.Process hiding (proc)
 
-
-type Eval = StateT Env IO   -- partial type, takes an a value
+type Eval = StateT Env IO   -- partial type, takes an 'a' value. The monad transformer stack
 type Env  = [(String, String)]
-data Val  = Str String
+data Val  = Str String   -- could be a wrapper around Maybe String, but this type may not be final
           | Null
             deriving Show
 
@@ -80,7 +79,7 @@ main = void $
                                             let laststate = snd out
                                             return $ Just laststate
                                Nothing -> return Nothing
-                 ) $ Just [("PATH", ".:/bin:/usr/bin"), ("test", "fish")] -- initial env is empty for now
+                 ) $ Just [("PATH", ".:/bin:/usr/bin"), ("test", "fish")]
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
@@ -88,6 +87,7 @@ iterateM_ f = g
                   Nothing -> return Nothing
                   Just z  -> f (Just z) >>= g
 
+-- modified from function in System.Process to take an environment as an argument
 proc :: Env -> FilePath -> [String] -> CreateProcess
 proc env cmd args = CreateProcess { cmdspec = RawCommand cmd args
                                   , cwd = Just "."
