@@ -23,7 +23,7 @@ tokens :-
     if					{ const TokIf }
     else				{ const TokElse }
     then				{ const TokThen }
-    ($alpha|\.|\/)+			{ \s -> TokWord s }
+    ($alpha|\/)+			{ \s -> TokWord s }
 
 {
 -- each type String -> Token
