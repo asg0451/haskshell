@@ -1,19 +1,21 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
+import           Control.Lens
 import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust, fromMaybe)
+import           Data.Monoid
 import           Parser
-import           System.Console.Readline  (readline, addHistory)
-import           System.Process hiding (proc)
+import           System.Console.Readline  (addHistory, readline)
 import           System.Environment
-import           Control.Lens
+import           System.Process           hiding (cwd, env, proc)
+import qualified System.Process           as P (cwd, env)
 
 type Env  = [(String, String)]
-type Eval = StateT Env IO
+type Eval = StateT InternalState IO
 
 data InternalState = InternalState { _env :: Env
                                    , _cwd :: String
-                                   }
+                                   } deriving (Show, Read, Eq)
 makeLenses ''InternalState
 
 
@@ -96,7 +98,7 @@ main = do
                                      let laststate = snd out
                                      return $ Just laststate
                         Nothing -> return Nothing
-                   ) $ Just [("PATH", ".:" ++ path), ("test", "fish")]
+                   ) $ Just $ InternalState [] "."
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
@@ -114,8 +116,8 @@ builtinCmd "cd" as = undefined
 -- modified from function in System.Process to take an environment as an argument
 proc :: Env -> FilePath -> [String] -> CreateProcess
 proc env cmd args = CreateProcess { cmdspec = RawCommand cmd args
-                                  , cwd = Just "."
-                                  , env = Just env
+                                  , P.cwd = Just "."
+                                  , P.env = Just env
                                   , std_in = Inherit
                                   , std_out = Inherit
                                   , std_err = Inherit
