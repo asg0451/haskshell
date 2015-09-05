@@ -231,7 +231,7 @@ lexer :: String -> [Token]
 lexer = alexScanTokens
 
 
-alex_action_2 =  \s -> TokInt (read s) 
+alex_action_2 =  TokInt . read 
 alex_action_3 =  const TokAssign 
 alex_action_4 =  const TokGT 
 alex_action_5 =  const TokLT 
@@ -243,7 +243,7 @@ alex_action_10 =  const TokEql
 alex_action_11 =  const TokIf 
 alex_action_12 =  const TokElse 
 alex_action_13 =  const TokThen 
-alex_action_14 =  \s -> TokWord s 
+alex_action_14 =  TokWord 
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}

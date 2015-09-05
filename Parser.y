@@ -64,17 +64,17 @@ fromLit e = case e of
                 StrLiteral s -> s
                 IntLiteral i -> show i
 
-tail :: [a] -> [a]
+tail :: [a] -> [a] -- safe tail
 tail [] = []
 tail l = drop 1 l
 
+-- this should no longer be necessary since we handle empty lines sanely now
+-- TODO remove
 head [] = "not a real command, or a real solution"
 head l = take 1 l !! 0
 
 parseError :: [Token] -> a
-parseError _ = error "Parse error"
-
--- todo seperate Expression into 2 datatypes: Expression and Constant
+parseError = const $ error "Parse error"
 
 data Expression
     = ComArgs String [String]  -- if list empty, treat as var ref!

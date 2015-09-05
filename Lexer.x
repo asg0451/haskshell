@@ -11,7 +11,7 @@ tokens :-
 
     $white+				;
     "--".*				;
-    $digit+				{ \s -> TokInt (read s) }
+    $digit+				{ TokInt . read }
     [\=]				{ const TokAssign }
     [\>]				{ const TokGT }
     [\<]				{ const TokLT }
@@ -23,7 +23,7 @@ tokens :-
     if					{ const TokIf }
     else				{ const TokElse }
     then				{ const TokThen }
-    ($alpha|\.|\/)+			{ \s -> TokWord s }
+    ($alpha|\/)+			{ TokWord }
 
 {
 -- each type String -> Token
