@@ -29,7 +29,27 @@ instance Monoid Val where  -- todo: make it so that failed commands have some au
     (Str a) `mappend` Null = Str a
     Null    `mappend` x = x
 
--- for now, making everything strings.
+
+isBuiltin :: String -> Bool
+isBuiltin s = s `elem` ["cd"]
+
+runBuiltin :: String -> [String] -> Eval Val
+runBuiltin "cd" as = do
+  if null as
+    then  modify $ \st -> over cwd (const ".") st --wrong but lazy. TODO add $HOME to env
+    else  modify $ \st -> over cwd (const $ head as) st
+  return Null
+
+
+runCom :: Env -> String -> [String] -> Eval Val
+runCom e c as = do
+  s <- get
+  let dir = view cwd s
+  (_, _, _, h) <- liftIO $ createProcess $ proc dir e c as
+  retVal <- liftIO $ waitForProcess h
+  return $ Str $ show retVal
+
+
 eval :: Expression -> Eval Val
 eval expr = case expr of
               IntLiteral i -> return $ Str $ show i
@@ -46,17 +66,15 @@ eval expr = case expr of
                         case lookup c environment of
                           Just val -> return $ Str val
                           Nothing  -> return Null
-              -- TODO add path
               -- TODO add support for pseudo-commands (internals) e.g. "cd"
               -- TODO add support for forking commands (background)
-              -- TODO add actual PATH to our PATH
               ComArgs c as -> do
                         s <- get
                         let environment = view env s
                         let args = map (\a -> fromMaybe a (lookup a environment)) as
-                        (_, _, _, h) <- liftIO $ createProcess $ proc environment c args
-                        retVal <- liftIO $ waitForProcess h  -- synchronous
-                        return $ Str $ show retVal
+                        if isBuiltin c
+                          then runBuiltin c args
+                          else runCom environment c args
               Seq a b -> do ra <- eval a
                             rb <- eval b
                             return $ ra `mappend` rb
@@ -98,12 +116,12 @@ main = do
                                      let laststate = snd out
                                      return $ Just laststate
                         Nothing -> return Nothing
-                   ) $ Just $ InternalState [] "."
+                   ) $ Just $ InternalState [("PATH", path)] "."
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
     where g x = case x of
-                  Nothing -> return Nothing
+                  Nothing -> putStrLn "" >> return Nothing
                   Just z  -> f (Just z) >>= g
 
 
@@ -114,9 +132,9 @@ builtinCmd "cd" as = undefined
 
 
 -- modified from function in System.Process to take an environment as an argument
-proc :: Env -> FilePath -> [String] -> CreateProcess
-proc env cmd args = CreateProcess { cmdspec = RawCommand cmd args
-                                  , P.cwd = Just "."
+proc :: FilePath -> Env -> FilePath -> [String] -> CreateProcess
+proc wd env cmd args = CreateProcess { cmdspec = RawCommand cmd args
+                                  , P.cwd = Just wd
                                   , P.env = Just env
                                   , std_in = Inherit
                                   , std_out = Inherit
