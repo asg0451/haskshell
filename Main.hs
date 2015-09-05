@@ -36,9 +36,9 @@ isBuiltin s = s `elem` ["cd"]
 runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
   if null as
-    then  modify $ \st -> over cwd (const ".") st --wrong but lazy. TODO add $HOME to env
+    then  modify $ \st -> over cwd (const ".") st -- wrong but lazy. TODO add $HOME to env
     else  modify $ \st -> over cwd (const $ head as) st
-  return Null
+  return $ Str "ExitSuccess" -- TODO do some checking here
 
 
 runCom :: Env -> String -> [String] -> Eval Val
@@ -55,39 +55,39 @@ eval expr = case expr of
               IntLiteral i -> return $ Str $ show i
               StrLiteral s -> return $ Str s
               Assign v (IntLiteral i) -> do
-                        modify $ \st -> over env (\e -> (v, show i) : e) st
-                        return $ Str $ show i
+                modify $ \st -> over env (\e -> (v, show i) : e) st
+                return $ Str $ show i
               Assign v (StrLiteral s) -> do
-                        modify $ \st -> over env (\e -> (v, s) : e) st
-                        return $ Str s
+                modify $ \st -> over env (\e -> (v, s) : e) st
+                return $ Str s
               ComArgs c [] -> do     -- this is wrong. see TODO's
-                        s <- get   -- add state to env for process
-                        let environment = view env s
-                        case lookup c environment of
-                          Just val -> return $ Str val
-                          Nothing  -> return Null
-              -- TODO add support for pseudo-commands (internals) e.g. "cd"
+                s <- get   -- add state to env for process
+                let environment = view env s
+                case lookup c environment of
+                 Just val -> return $ Str val
+                 Nothing  -> return Null
               -- TODO add support for forking commands (background)
               ComArgs c as -> do
-                        s <- get
-                        let environment = view env s
-                        let args = map (\a -> fromMaybe a (lookup a environment)) as
-                        if isBuiltin c
-                          then runBuiltin c args
-                          else runCom environment c args
-              Seq a b -> do ra <- eval a
-                            rb <- eval b
-                            return $ ra `mappend` rb
+                s <- get
+                let environment = view env s
+                let args = map (\a -> fromMaybe a (lookup a environment)) as
+                if isBuiltin c
+                  then runBuiltin c args
+                  else runCom environment c args
+              Seq a b -> do
+                ra <- eval a
+                rb <- eval b
+                return $ ra `mappend` rb
               IfElse c e1 (Just e2) -> do
-                        b <- evalCond c
-                        if b
-                           then eval e1
-                           else eval e2
+                b <- evalCond c
+                if b
+                  then eval e1
+                  else eval e2
               IfElse c e Nothing -> do
-                        b <- evalCond c
-                        if b
-                           then eval e
-                           else return Null
+                b <- evalCond c
+                if b
+                  then eval e
+                  else return Null
               Empty -> return Null
 
 
@@ -105,10 +105,18 @@ evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 main :: IO ()
 main = do
   path <- getEnv "PATH"
+  home <- getEnv "HOME"
+  let histFile = home ++ "/.HaskHistory"
+  c <- readFile histFile
+  let pastHistory = lines c
+  mapM_ addHistory pastHistory
   void $ iterateM_ (\prev -> do
                        line <- readline ">> "
                        case line of
                         Just l -> do addHistory l  -- for readline
+
+                                     appendFile histFile $ l ++ "\n"
+
                                      let ast = plex l
                                      print ast
                                      out <- runStateT (eval ast) (fromJust prev)
@@ -123,10 +131,6 @@ iterateM_ f = g
     where g x = case x of
                   Nothing -> putStrLn "" >> return Nothing
                   Just z  -> f (Just z) >>= g
-
-
-builtinCmd :: String -> [String] -> Eval Val
-builtinCmd "cd" as = undefined
 
 
 

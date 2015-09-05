@@ -4,8 +4,9 @@ module Lexer (lexer, Token(..)) where
 
 %wrapper "basic"
 
-$digit = 0-9
+$digit = [0-9]
 $alpha = [a-zA-Z\._]
+$word  = [a-zA-Z\.\/_\-]
 
 tokens :-
 
@@ -23,7 +24,8 @@ tokens :-
     if					{ const TokIf }
     else				{ const TokElse }
     then				{ const TokThen }
-    ($alpha|\/)+			{ TokWord }
+    $word+                              { TokWord }
+
 
 {
 -- each type String -> Token

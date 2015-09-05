@@ -74,7 +74,7 @@ head [] = "not a real command, or a real solution"
 head l = take 1 l !! 0
 
 parseError :: [Token] -> a
-parseError = const $ error "Parse error"
+parseError l = error $ "Parse error" ++ show l
 
 data Expression
     = ComArgs String [String]  -- if list empty, treat as var ref!
