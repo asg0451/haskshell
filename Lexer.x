@@ -11,7 +11,7 @@ $word  = [a-zA-Z\.\/_\-]
 tokens :-
 
     $white+				;
-    "--".*				;
+    "#".*				;
     $digit+				{ TokInt . read }
     [\=]				{ const TokAssign }
     [\>]				{ const TokGT }
