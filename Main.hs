@@ -47,14 +47,9 @@ instance Monoid Val where  -- todo: make it so that failed commands have some au
 cwd :: IO FilePath
 cwd = getCurrentDirectory
 
-envs :: IO [(String, String)]
-envs = getEnvironment
-
 isBuiltin :: String -> Bool
 isBuiltin s = s `elem` ["cd"]
 
--- TODO actual system for dealing with FilePaths
--- TODO look into how this is meant to be done: man chdir, ccal in unistd.h
 runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
   home <- liftIO $ getEnv "HOME"
@@ -149,10 +144,6 @@ evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 -- unfinished
 
 
--- TODO reconcile posix getCurrentDirectory/chdir with state. env too
--- state used for: job table, variables not in env
--- https://downloads.haskell.org/~ghc/7.0.3/docs/html/libraries/unix-2.4.2.0/System-Posix.html
--- https://downloads.haskell.org/~ghc/7.0.3/docs/html/libraries/unix-2.4.2.0/System-Posix-Env.html
 main :: IO ()
 main = do
   tid <- myThreadId
@@ -166,7 +157,6 @@ main = do
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
---  bindKey '\t' possibleCompletions
   void $ iterateM_ (\prev -> do
                        line <- readline ">> "
                        case line of

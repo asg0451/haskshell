@@ -56,7 +56,8 @@ Const: ConstInt                   { $1 }
 
 ConstInt: int                     { IntLiteral $1 }
 
-ConstStr: '"' word '"'            { StrLiteral $2 }
+ConstStr: '"' '"'                 { StrLiteral ""}
+        | '"' word '"'            { StrLiteral $2 }
         | word                    { StrLiteral $1 }
 
 {
