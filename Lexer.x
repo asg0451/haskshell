@@ -24,6 +24,7 @@ tokens :-
     if					{ const TokIf }
     else				{ const TokElse }
     then				{ const TokThen }
+    alias				{ const TokAlias }
     $word+                              { TokWord }
 
 
@@ -44,6 +45,7 @@ data Token
     | TokIf
     | TokElse
     | TokThen
+    | TokAlias
       deriving (Eq, Show)
 
 lexer :: String -> [Token]

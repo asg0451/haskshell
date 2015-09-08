@@ -5,3 +5,4 @@ dist/*
 cabal.sandbox.config
 Lexer.info
 Parser.info
+test/*

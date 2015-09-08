@@ -10,7 +10,8 @@ import           Data.List                (isPrefixOf)
 import           Data.Maybe               (fromJust, fromMaybe)
 import           Data.Monoid
 import           Parser
-import           System.Console.Readline  (addHistory, readline)
+import           System.Console.Readline
+import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.FilePath.Posix
@@ -18,13 +19,18 @@ import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
+
+import qualified Data.Map.Lazy            as M
+-- import           System.Posix.Env
 --------------------------------------------------------------------- Types
 
-type Env  = [(String, String)]
+type VarMap    = M.Map String String
+type AliasMap  = M.Map String String
 type Eval = StateT InternalState IO
-data InternalState = InternalState { _env :: Env
-                                   , _cwd :: FilePath
-                                   } deriving (Show, Read, Eq)
+data InternalState = InternalState { _vars      :: VarMap
+                                   , _jobsTable :: M.Map () () -- not implemented yet
+                                   , _aliases   :: AliasMap
+                                   } deriving (Show, Read)
 makeLenses ''InternalState
 
 data Val  = Str String
@@ -38,6 +44,12 @@ instance Monoid Val where  -- todo: make it so that failed commands have some au
     Null    `mappend` x = x
 ------------------------------------------------------------------------
 
+cwd :: IO FilePath
+cwd = getCurrentDirectory
+
+envs :: IO [(String, String)]
+envs = getEnvironment
+
 isBuiltin :: String -> Bool
 isBuiltin s = s `elem` ["cd"]
 
@@ -45,22 +57,30 @@ isBuiltin s = s `elem` ["cd"]
 -- TODO look into how this is meant to be done: man chdir, ccal in unistd.h
 runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
-  s <- get
-  let wd = view cwd s
-      arg = head as
-  if | null as              -> modify $ \st -> set cwd wd st
-     | arg == "."           -> return ()
-     | arg == ".."          -> modify $ \st -> set cwd (takeDirectory wd) st
-     | "-" `isPrefixOf` arg -> return ()
-     | isRelative arg       -> modify $ \st -> over cwd (</> arg) st
-     | otherwise            -> modify $ \st -> set cwd arg st
-  return $ Str "ExitSuccess" -- TODO do some checking here
+  home <- liftIO $ getEnv "HOME"
+  pwd <- liftIO $ cwd
+  let arg = head as
+  if | null as              -> do liftIO $ setCurrentDirectory home
+                                  success
+     | arg == "."           -> do success
+     | arg == ".."          -> do liftIO $ setCurrentDirectory $ takeDirectory pwd
+                                  success
+     | "-" `isPrefixOf` arg -> do success
+     | isRelative arg       -> do let dir = pwd </> arg
+                                  dirp <- liftIO $ doesDirectoryExist dir
+                                  if dirp
+                                    then do liftIO $ setCurrentDirectory $ pwd </> arg
+                                            success
+                                    else return $ Str $ show $ ExitFailure 1
+     | otherwise            -> do liftIO $  setCurrentDirectory $ arg
+                                  success
 
-runCom :: Env -> String -> [String] -> Eval Val
-runCom e c as = do
-  s <- get
-  let dir = view cwd s
-  rval <- liftIO $ runProc $ proc_ dir e c as
+success :: Eval Val
+success = return $ Str $ show ExitSuccess
+
+runCom :: String -> [String] -> Eval Val
+runCom c as = do
+  rval <- liftIO $ runProc $ proc_ c as
   return $ fromMaybe (Str $ show $ ExitFailure 127) rval
 
 runProc :: CreateProcess -> IO (Maybe Val)
@@ -73,30 +93,33 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
 
+-- TODO use env for some vars, local thing for others
 eval :: Expression -> Eval Val
 eval expr = case expr of
               IntLiteral i -> return $ Str $ show i
               StrLiteral s -> return $ Str s
               Assign v (IntLiteral i) -> do
-                modify $ \st -> over env (\e -> (v, show i) : e) st
+                modify $ \st -> over vars (M.insert v (show i)) st
                 return $ Str $ show i
               Assign v (StrLiteral s) -> do
-                modify $ \st -> over env (\e -> (v, s) : e) st
+                modify $ \st -> over vars (M.insert v s) st
                 return $ Str s
               ComArgs c [] -> do     -- this is wrong. see TODO's
-                s <- get   -- add state to env for process
-                let environment = view env s
-                case lookup c environment of
-                 Just val -> return $ Str val
+                val <- liftIO $ lookupEnv c
+                case val of
+                 Just v -> return $ Str v
                  Nothing  -> return Null
               -- TODO add support for forking commands (background)
               ComArgs c as -> do
+                e <- liftIO $ getEnvironment
                 s <- get
-                let environment = view env s
-                let args = map (\a -> fromMaybe a (lookup a environment)) as
-                if isBuiltin c
-                  then runBuiltin c args
-                  else runCom environment c args
+                let args = map (\a -> fromMaybe a (lookup a e)) as
+                    c' = M.findWithDefault c c $ view aliases s
+                if isBuiltin c'
+                  then runBuiltin c' args
+                  else runCom  c' args
+              Alias k v -> do modify $ over aliases $ M.insert k v
+                              return $ Str v
               Seq a b -> do
                 ra <- eval a
                 rb <- eval b
@@ -125,6 +148,11 @@ evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
 evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 -- unfinished
 
+
+-- TODO reconcile posix getCurrentDirectory/chdir with state. env too
+-- state used for: job table, variables not in env
+-- https://downloads.haskell.org/~ghc/7.0.3/docs/html/libraries/unix-2.4.2.0/System-Posix.html
+-- https://downloads.haskell.org/~ghc/7.0.3/docs/html/libraries/unix-2.4.2.0/System-Posix-Env.html
 main :: IO ()
 main = do
   tid <- myThreadId
@@ -133,12 +161,12 @@ main = do
   installHandler keyboardSignal (Catch (print "ctrl-c caught")) Nothing
   -- catch ctrl-z
   installHandler sigTSTP (Catch (print "ctrl-z" >> Ex.throwTo tid Ex.UserInterrupt)) Nothing
-  path <- getEnv "PATH"
   home <- getEnv "HOME"
   let histFile = home ++ "/.HaskHistory"
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
+--  bindKey '\t' possibleCompletions
   void $ iterateM_ (\prev -> do
                        line <- readline ">> "
                        case line of
@@ -151,7 +179,7 @@ main = do
                                      let laststate = snd out
                                      return $ Just laststate
                         Nothing -> return Nothing
-                   ) $ Just $ InternalState [("PATH", path)] home
+                   ) $ Just $ InternalState M.empty M.empty M.empty
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
@@ -163,10 +191,10 @@ iterateM_ f = g
 
 
 -- modified from function in System.Process to take an environment as an argument
-proc_ :: FilePath -> Env -> FilePath -> [String] -> CreateProcess
-proc_ wd env cmd args = CreateProcess { cmdspec = RawCommand cmd args
-                                     , P.cwd = Just wd
-                                     , P.env = Just env
+proc_ :: FilePath -> [String] -> CreateProcess
+proc_ cmd args = CreateProcess { cmdspec = RawCommand cmd args
+                                     , P.cwd = Nothing
+                                     , P.env = Nothing
                                      , std_in = Inherit
                                      , std_out = Inherit
                                      , std_err = Inherit

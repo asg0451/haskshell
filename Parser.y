@@ -27,6 +27,7 @@ import Lexer (lexer, Token(..))
         if      { TokIf }
         else    { TokElse }
         then    { TokThen }
+        alias   { TokAlias }
 
 %left ';' -- precedence bitches
 %left '='
@@ -36,6 +37,7 @@ import Lexer (lexer, Token(..))
 
 Expr: Args                        { ComArgs (head $1) (tail $1) }
     | ConstStr '=' Const          { Assign (fromLit $1) $3 }
+    | alias ConstStr '=' ConstStr { Alias (fromLit $2) (fromLit $4) }
     | Expr ';' Expr               { Seq $1 $3 }
     | if Cond then Expr           { IfElse $2 $4 Nothing }
     | if Cond then Expr else Expr { IfElse $2 $4 (Just $6) }
@@ -79,6 +81,7 @@ parseError l = error $ "Parse error" ++ show l
 data Expression
     = ComArgs String [String]  -- if list empty, treat as var ref!
     | Assign String Expression
+    | Alias String String
     | Seq Expression Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
     | IntLiteral Int
