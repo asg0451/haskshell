@@ -60,6 +60,14 @@ ConstStr: '"' '"'                 { StrLiteral ""}
         | '"' word '"'            { StrLiteral $2 }
         | word                    { StrLiteral $1 }
 
+-- ConstStr: '"' '"'                 { StrLiteral "" }
+--         | '"' Words '"'           { $2 }
+--         | Words                   { $1 }
+
+-- Words: Words word                 { StrLiteral ((fromLit $1) ++ $2) }
+--      | word                       { StrLiteral $1 }
+
+
 {
 
 fromLit :: Expression -> String

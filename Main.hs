@@ -89,6 +89,7 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
 
 -- TODO use env for some vars, local thing for others
+-- TODO in command args, forall args, check if arg is in varmap, then in env
 eval :: Expression -> Eval Val
 eval expr = case expr of
               IntLiteral i -> return $ Str $ show i
@@ -143,7 +144,8 @@ evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
 evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 -- unfinished
 
-
+-- TODO fuck with parser/lexer to add whitespace to string literals
+-- TODO either do some seperating of alias output to com/args, or use different datatype
 main :: IO ()
 main = do
   tid <- myThreadId
@@ -162,12 +164,18 @@ main = do
                        case line of
                         Just l -> do addHistory l  -- for readline
                                      when (not $ null l) $ appendFile histFile $ l ++ "\n"
-                                     let ast = plex l
-                                     print ast
-                                     out <- runStateT (eval ast) (fromJust prev)
-                                     print out
-                                     let laststate = snd out
-                                     return $ Just laststate
+--                                     let ast = plex l
+                                     astM <- cleanup $ plex l
+                                     case astM of
+                                      Just ast -> do
+                                        print ast
+                                        out <- runStateT (eval ast) (fromJust prev)
+                                        print out
+                                        let laststate = snd out
+                                        return $ Just laststate
+                                      Nothing -> do
+                                        putStrLn $ "Lexical Error: " ++ l
+                                        return $ prev
                         Nothing -> return Nothing
                    ) $ Just $ InternalState M.empty M.empty M.empty
 
@@ -177,7 +185,10 @@ iterateM_ f = g
                   Nothing -> putStrLn "" >> return Nothing
                   Just z  -> f (Just z) >>= g
 
-
+cleanup :: a -> IO (Maybe a)
+cleanup x =  Ex.catch (x `seq` return (Just x)) handler
+    where
+          handler ex = return Nothing  `const`  (ex :: Ex.ErrorCall)
 
 
 -- modified from function in System.Process to take an environment as an argument
