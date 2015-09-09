@@ -6,7 +6,7 @@ module Lexer (lexer, Token(..)) where
 
 $digit = [0-9]
 $alpha = [a-zA-Z\._]
-$word  = [a-zA-Z\.\/_\-]
+$word  = [a-zA-Z\.\/_\-0-9]
 
 tokens :-
 
