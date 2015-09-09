@@ -20,6 +20,7 @@ import           System.Posix.Signals     (Handler (..), installHandler,
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
 
+import           Data.List.Split
 import qualified Data.Map.Lazy            as M
 -- import           System.Posix.Env
 --------------------------------------------------------------------- Types
@@ -109,11 +110,13 @@ eval expr = case expr of
               ComArgs c as -> do
                 e <- liftIO $ getEnvironment
                 s <- get
-                let args = map (\a -> fromMaybe a (lookup a e)) as
-                    c' = M.findWithDefault c c $ view aliases s
-                if isBuiltin c'
-                  then runBuiltin c' args
-                  else runCom  c' args
+                let c' = M.findWithDefault c c $ view aliases s
+                    cPlusArgs = splitOn " " c'
+                    c'' = head cPlusArgs
+                    args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                if isBuiltin c''
+                  then runBuiltin c'' args
+                  else runCom  c'' args
               Alias k v -> do modify $ over aliases $ M.insert k v
                               return $ Str v
               Seq a b -> do
@@ -131,7 +134,11 @@ eval expr = case expr of
                   then eval e
                   else return Null
               Empty -> return Null
-
+  where lookup2 a1 a2 e = case lookup e a1 of
+                           Just r1 -> r1
+                           Nothing -> case M.lookup e a2 of
+                                       Just r2 -> r2
+                                       Nothing -> e
 
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b

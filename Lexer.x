@@ -10,9 +10,11 @@ $word  = [a-zA-Z\.\/_\-]
 
 tokens :-
 
+    \"(\\.|[^\"])*\"                    { TokWord . stripQuotes }
     $white+				;
     "#".*				;
     $digit+				{ TokInt . read }
+
     [\=]				{ const TokAssign }
     [\>]				{ const TokGT }
     [\<]				{ const TokLT }
@@ -34,6 +36,7 @@ tokens :-
 data Token
     = TokAssign
     | TokWord String
+    | TokWordQuoted String
     | TokInt Int
     | TokSemi
     | TokLP
@@ -51,4 +54,6 @@ data Token
 lexer :: String -> [Token]
 lexer = alexScanTokens
 
+stripQuotes :: String -> String
+stripQuotes s = reverse $ dropWhile (== '\"') $ reverse $ dropWhile (== '\"') s
 }
