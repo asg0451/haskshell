@@ -1,4 +1,5 @@
 * Syntax
+** 'let' for assign var
+** $ for var ref?
 
 * Features to be implemented
-  - vty ac instead of curses

@@ -207,7 +207,7 @@ alex_deflt :: Array Int Int
 alex_deflt = listArray (0,49) [-1,-1,-1,-1,9,9,-1,11,11,15,15,18,18,20,20,20,24,24,24,20,20,-1,20,-1,24,-1,-1,-1,-1,-1,-1,-1,20,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1]
 
 alex_accept = listArray (0::Int,49) [AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAccNone,AlexAcc (alex_action_0),AlexAcc (alex_action_0),AlexAccSkip,AlexAccSkip,AlexAcc (alex_action_3),AlexAcc (alex_action_4),AlexAcc (alex_action_5),AlexAcc (alex_action_6),AlexAcc (alex_action_7),AlexAcc (alex_action_8),AlexAcc (alex_action_9),AlexAcc (alex_action_10),AlexAcc (alex_action_11),AlexAcc (alex_action_12),AlexAcc (alex_action_13),AlexAcc (alex_action_14),AlexAcc (alex_action_15),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16),AlexAcc (alex_action_16)]
-{-# LINE 33 "Lexer.x" #-}
+{-# LINE 32 "Lexer.x" #-}
 
 -- each type String -> Token
 
