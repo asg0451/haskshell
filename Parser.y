@@ -96,13 +96,13 @@ data Expression
     | IntLiteral Int
     | StrLiteral String
     | Empty
-    deriving Show
+    deriving (Show, Eq)
 
 data Condition
     = Gt Expression Expression
     | Lt Expression Expression
     | Eql Expression Expression
-      deriving Show
+    deriving (Show, Eq)
 
 plex :: String -> Expression
 plex = (parse . lexer)

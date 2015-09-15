@@ -140,19 +140,24 @@ eval expr = case expr of
                                        Just r2 -> r2
                                        Nothing -> e
 
+-- TODO add ref'd var to parser, add to evalCond here
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ length a > length b
+evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
+evalCond (Gt (StrLiteral a) (IntLiteral b)) = return $ a > (show b)
+evalCond (Gt (IntLiteral a) (StrLiteral b)) = return $ (show a) > b
 
 evalCond (Lt (IntLiteral a) (IntLiteral b)) = return $ a < b
 evalCond (Lt (StrLiteral a) (StrLiteral b)) = return $ length a < length b
+evalCond (Lt (StrLiteral a) (IntLiteral b)) = return $ a < (show b)
+evalCond (Lt (IntLiteral a) (StrLiteral b)) = return $ (show a) < b
 
 evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
 evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
--- unfinished
+evalCond (Eql (StrLiteral a) (IntLiteral b)) = return $ a == (show b)
+evalCond (Eql (IntLiteral a) (StrLiteral b)) = return $ (show a) == b
 
--- TODO fuck with parser/lexer to add whitespace to string literals
--- TODO either do some seperating of alias output to com/args, or use different datatype
+
 main :: IO ()
 main = do
   tid <- myThreadId
@@ -184,7 +189,10 @@ main = do
                                         putStrLn $ "Lexical Error: " ++ l
                                         return $ prev
                         Nothing -> return Nothing
-                   ) $ Just $ InternalState M.empty M.empty M.empty
+                   ) $ Just $ InternalState { _vars      = M.empty
+                                            , _jobsTable = M.empty
+                                            , _aliases   = M.fromList [("ls", "ls --color")]
+                                            }
 
 iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM_ f = g
@@ -195,7 +203,7 @@ iterateM_ f = g
 cleanup :: a -> IO (Maybe a)
 cleanup x =  Ex.catch (x `seq` return (Just x)) handler
     where
-          handler ex = return Nothing  `const`  (ex :: Ex.ErrorCall)
+          handler (ex :: Ex.ErrorCall) = return Nothing
 
 
 -- modified from function in System.Process to take an environment as an argument
