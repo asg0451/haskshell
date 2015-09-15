@@ -15,6 +15,7 @@ import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.FilePath.Posix
+import           System.IO
 import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
@@ -78,11 +79,28 @@ success = return $ Str $ show ExitSuccess
 failure :: Int -> Eval Val
 failure = return . Str . show . ExitFailure
 
+---------- functions to run external commands
+
 runCom :: String -> [String] -> Eval Val
 runCom c as = do
   rval <- liftIO $ runProc $ proc_ c as
   return $ fromMaybe (Str $ show $ ExitFailure 127) rval
 
+-- e.g. ls > file
+runComRedirOut :: String -> [String] -> FilePath -> Eval Val
+runComRedirOut c as p = do
+  h <- liftIO $ openFile p WriteMode
+  rval <- liftIO $ runProc $ (proc_ c as) {std_out = UseHandle h}
+  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+
+-- e.g. ls < file
+runComRedirIn :: String -> [String] -> FilePath -> Eval Val
+runComRedirIn c as p = do
+  h <- liftIO $ openFile p WriteMode
+  rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
+  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+
+-- createProcess returns (mb_stdin_hdl, mb_stdout_hdl, mb_stderr_hdl, ph)
 runProc :: CreateProcess -> IO (Maybe Val)
 runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
                case hs of
@@ -93,9 +111,17 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
 
+------------
+
+
+
 eval :: Expression -> Eval Val
 eval expr = case expr of
-             RedirectOut e f -> return Null -- TODO do this
+             RedirectOut e f -> do   -- TODO find way to do this. add map of commands-to-redir to state maybe using withState?
+               -- pwd <- liftIO cwd
+               -- if | isRelative f -> do
+               return Null
+
              RedirectIn  e f -> return Null -- TODO do this
 
              IntLiteral i -> return $ Str $ show i
@@ -177,12 +203,11 @@ main = do
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
-  void $ iterateM_ (\prev -> do
+  void $ iterateM' (\prev -> do
                        line <- readline ">> "
                        case line of
                         Just l -> do addHistory l  -- for readline
                                      when (not $ null l) $ appendFile histFile $ l ++ "\n"
---                                     let ast = plex l
                                      astM <- cleanup $ plex l
                                      case astM of
                                       Just ast -> do
@@ -200,8 +225,8 @@ main = do
                                             , _aliases   = M.fromList [("ls", "ls --color")]
                                             }
 
-iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
-iterateM_ f = g
+iterateM' :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
+iterateM' f = g
     where g x = case x of
                   Nothing -> putStrLn "" >> return Nothing
                   Just z  -> f (Just z) >>= g
