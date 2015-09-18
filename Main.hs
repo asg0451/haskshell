@@ -67,7 +67,6 @@ runBuiltin "cd" as = do
      | arg == ".."          -> do liftIO $ setCurrentDirectory $ takeDirectory pwd
                                   success
      | "-" `isPrefixOf` arg -> do success
-
      | isRelative arg       -> do liftIO $ setCurrentDirectory $ dir
                                   success
      | otherwise            -> do liftIO $ setCurrentDirectory $ arg
@@ -96,7 +95,7 @@ runComRedirOut c as p = do
 -- e.g. ls < file
 runComRedirIn :: String -> [String] -> FilePath -> Eval Val
 runComRedirIn c as p = do
-  h <- liftIO $ openFile p WriteMode
+  h <- liftIO $ openFile p ReadMode
   rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
   return $ fromMaybe (Str $ show $ ExitFailure 127) rval
 
@@ -114,14 +113,33 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
 ------------
 
 
-
 eval :: Expression -> Eval Val
 eval expr = case expr of
-             RedirectOut e f -> do   -- TODO find way to do this. add map of commands-to-redir to state maybe using withState?
-               -- pwd <- liftIO cwd
-               -- if | isRelative f -> do
-               return Null
 
+             RedirectOut (ComArgs c as) f -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args -- todo
+                 else runComRedirOut c'' args f
+
+             RedirectIn (ComArgs c as) f -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args -- todo
+                 else runComRedirIn c'' args f
+
+
+             RedirectOut e f -> return Null   -- TODO find way to do this. add map of commands-to-redir to state maybe using withState?
              RedirectIn  e f -> return Null -- TODO do this
 
              IntLiteral i -> return $ Str $ show i
