@@ -99,6 +99,18 @@ runComRedirIn c as p = do
   rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
   return $ fromMaybe (Str $ show $ ExitFailure 127) rval
 
+-- e.g. echo "hi" | cat
+-- todo error check
+runComsPiped :: String -> [String] -> String -> [String] -> Eval Val
+runComsPiped c as d bs = do
+ hs <- liftIO $ runProcReturningHandles $ (proc_ c as) {std_out = CreatePipe}
+ let pout = fromJust $  view _2  $ fromJust hs
+ hs' <- liftIO $ runProcReturningHandles $ (proc_ d bs) {std_in = UseHandle pout}
+ liftIO $ waitForProcess (view _4 $ fromJust hs)
+ liftIO $ waitForProcess (view _4 $ fromJust hs')
+ return $ Str $ show ExitSuccess
+
+
 -- createProcess returns (mb_stdin_hdl, mb_stdout_hdl, mb_stderr_hdl, ph)
 runProc :: CreateProcess -> IO (Maybe Val)
 runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
@@ -110,12 +122,22 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
 
+
+runProcReturningHandles :: CreateProcess -> IO (Maybe (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle))
+runProcReturningHandles c = do
+  hs <- Ex.catch (createProcess c >>= return . Just) handler
+  case hs of
+   Just hs -> do
+     return $ Just $ hs
+   Nothing -> return Nothing
+  where
+    handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
+
 ------------
 
 
 eval :: Expression -> Eval Val
 eval expr = case expr of
-
              RedirectOut (ComArgs c as) f -> do
                e <- liftIO $ getEnvironment
                s <- get
@@ -126,7 +148,6 @@ eval expr = case expr of
                if isBuiltin c''
                  then runBuiltin c'' args -- todo
                  else runComRedirOut c'' args f
-
              RedirectIn (ComArgs c as) f -> do
                e <- liftIO $ getEnvironment
                s <- get
@@ -138,9 +159,24 @@ eval expr = case expr of
                  then runBuiltin c'' args -- todo
                  else runComRedirIn c'' args f
 
+             RedirectOut e f -> return Null -- todo deal with this
+             RedirectIn  e f -> return Null
 
-             RedirectOut e f -> return Null   -- TODO find way to do this. add map of commands-to-redir to state maybe using withState?
-             RedirectIn  e f -> return Null -- TODO do this
+             Pipe (ComArgs c as) (ComArgs d bs) -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                   d' = M.findWithDefault d d $ view aliases s
+                   dPlusArgs = splitOn " " d'
+                   d'' = head dPlusArgs
+                   dargs = map (lookup2 e (view vars s)) $ bs ++ tail dPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args -- todo
+                 else runComsPiped c'' args d'' dargs
+
 
              IntLiteral i -> return $ Str $ show i
              StrLiteral s -> return $ Str s

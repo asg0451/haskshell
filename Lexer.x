@@ -28,6 +28,7 @@ tokens :-
     then				{ const TokThen }
     alias				{ const TokAlias }
     $word+                              { TokWord }
+    [\|]                                { const TokPipe }
 
 {
 -- each type String -> Token
@@ -48,6 +49,7 @@ data Token
     | TokElse
     | TokThen
     | TokAlias
+    | TokPipe
       deriving (Eq, Show)
 
 lexer :: String -> [Token]
