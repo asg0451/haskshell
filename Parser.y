@@ -2,14 +2,13 @@
 
 module Parser (plex, Expression(..), Condition(..)) where
 
-import Prelude hiding (head, tail)
 import Data.Char
 import Lexer (lexer, Token(..))
 }
 
 
 -- parse :: [Token] -> T
-%name parse Expr
+%name parse Line
 %tokentype { Token }
 %error { parseError }
 
@@ -34,6 +33,10 @@ import Lexer (lexer, Token(..))
 -- %left else then    -- this line changes precedence of if stmts
 
 %%  --- Productions
+
+Line: Expr gt ConstStr            { RedirectOut $1 (fromLit $3) }
+    | Expr lt ConstStr            { RedirectIn $1 (fromLit $3) }
+    | Expr                        { $1 }
 
 Expr: Args                        { ComArgs (head $1) (tail $1) }
     | ConstStr '=' Const          { Assign (fromLit $1) $3 }
@@ -75,15 +78,6 @@ fromLit e = case e of
                 StrLiteral s -> s
                 IntLiteral i -> show i
 
-tail :: [a] -> [a] -- safe tail
-tail [] = []
-tail l = drop 1 l
-
--- this should no longer be necessary since we handle empty lines sanely now
--- TODO remove
-head [] = "not a real command, or a real solution"
-head l = take 1 l !! 0
-
 parseError :: [Token] -> a
 parseError l = error $ "Parse error" ++ show l
 
@@ -93,16 +87,18 @@ data Expression
     | Alias String String
     | Seq Expression Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
+    | RedirectOut Expression String -- temp?
+    | RedirectIn Expression String
     | IntLiteral Int
     | StrLiteral String
     | Empty
-    deriving Show
+    deriving (Show, Eq)
 
 data Condition
     = Gt Expression Expression
     | Lt Expression Expression
     | Eql Expression Expression
-      deriving Show
+    deriving (Show, Eq)
 
 plex :: String -> Expression
 plex = (parse . lexer)

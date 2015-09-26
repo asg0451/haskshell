@@ -15,6 +15,7 @@ import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.FilePath.Posix
+import           System.IO
 import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
@@ -56,29 +57,49 @@ runBuiltin "cd" as = do
   home <- liftIO $ getEnv "HOME"
   pwd <- liftIO $ cwd
   let arg = head as
-  if | null as              -> do liftIO $ setCurrentDirectory home
+      dir = pwd </> arg
+  dirp <- liftIO $ doesDirectoryExist dir
+  if | not dirp             -> do liftIO $ print $ "not a directory: " ++ dir
+                                  failure 1
+     | null as              -> do liftIO $ setCurrentDirectory home
                                   success
      | arg == "."           -> do success
      | arg == ".."          -> do liftIO $ setCurrentDirectory $ takeDirectory pwd
                                   success
      | "-" `isPrefixOf` arg -> do success
-     | isRelative arg       -> do let dir = pwd </> arg
-                                  dirp <- liftIO $ doesDirectoryExist dir
-                                  if dirp
-                                    then do liftIO $ setCurrentDirectory $ pwd </> arg
-                                            success
-                                    else return $ Str $ show $ ExitFailure 1
-     | otherwise            -> do liftIO $  setCurrentDirectory $ arg
+     | isRelative arg       -> do liftIO $ setCurrentDirectory $ dir
+                                  success
+     | otherwise            -> do liftIO $ setCurrentDirectory $ arg
                                   success
 
 success :: Eval Val
 success = return $ Str $ show ExitSuccess
+
+failure :: Int -> Eval Val
+failure = return . Str . show . ExitFailure
+
+---------- functions to run external commands
 
 runCom :: String -> [String] -> Eval Val
 runCom c as = do
   rval <- liftIO $ runProc $ proc_ c as
   return $ fromMaybe (Str $ show $ ExitFailure 127) rval
 
+-- e.g. ls > file
+runComRedirOut :: String -> [String] -> FilePath -> Eval Val
+runComRedirOut c as p = do
+  h <- liftIO $ openFile p WriteMode
+  rval <- liftIO $ runProc $ (proc_ c as) {std_out = UseHandle h}
+  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+
+-- e.g. ls < file
+runComRedirIn :: String -> [String] -> FilePath -> Eval Val
+runComRedirIn c as p = do
+  h <- liftIO $ openFile p ReadMode
+  rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
+  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+
+-- createProcess returns (mb_stdin_hdl, mb_stdout_hdl, mb_stderr_hdl, ph)
 runProc :: CreateProcess -> IO (Maybe Val)
 runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
                case hs of
@@ -89,70 +110,104 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
 
--- TODO use env for some vars, local thing for others
--- TODO in command args, forall args, check if arg is in varmap, then in env
+------------
+
+
 eval :: Expression -> Eval Val
 eval expr = case expr of
-              IntLiteral i -> return $ Str $ show i
-              StrLiteral s -> return $ Str s
-              Assign v (IntLiteral i) -> do
-                modify $ \st -> over vars (M.insert v (show i)) st
-                return $ Str $ show i
-              Assign v (StrLiteral s) -> do
-                modify $ \st -> over vars (M.insert v s) st
-                return $ Str s
-              ComArgs c [] -> do     -- this is wrong. see TODO's
-                val <- liftIO $ lookupEnv c
-                case val of
-                 Just v -> return $ Str v
-                 Nothing  -> return Null
+
+             RedirectOut (ComArgs c as) f -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args -- todo
+                 else runComRedirOut c'' args f
+
+             RedirectIn (ComArgs c as) f -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args -- todo
+                 else runComRedirIn c'' args f
+
+
+             RedirectOut e f -> return Null   -- TODO find way to do this. add map of commands-to-redir to state maybe using withState?
+             RedirectIn  e f -> return Null -- TODO do this
+
+             IntLiteral i -> return $ Str $ show i
+             StrLiteral s -> return $ Str s
+             Assign v (IntLiteral i) -> do
+               modify $ \st -> over vars (M.insert v (show i)) st
+               return $ Str $ show i
+             Assign v (StrLiteral s) -> do
+               modify $ \st -> over vars (M.insert v s) st
+               return $ Str s
+             ComArgs c [] -> do     -- this is wrong. see TODO's
+               val <- liftIO $ lookupEnv c
+               case val of
+                Just v -> return $ Str v
+                Nothing  -> return Null
               -- TODO add support for forking commands (background)
-              ComArgs c as -> do
-                e <- liftIO $ getEnvironment
-                s <- get
-                let c' = M.findWithDefault c c $ view aliases s
-                    cPlusArgs = splitOn " " c'
-                    c'' = head cPlusArgs
-                    args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
-                if isBuiltin c''
-                  then runBuiltin c'' args
-                  else runCom  c'' args
-              Alias k v -> do modify $ over aliases $ M.insert k v
-                              return $ Str v
-              Seq a b -> do
-                ra <- eval a
-                rb <- eval b
-                return $ ra `mappend` rb
-              IfElse c e1 (Just e2) -> do
-                b <- evalCond c
-                if b
-                  then eval e1
-                  else eval e2
-              IfElse c e Nothing -> do
-                b <- evalCond c
-                if b
-                  then eval e
-                  else return Null
-              Empty -> return Null
+             ComArgs c as -> do
+               e <- liftIO $ getEnvironment
+               s <- get
+               let c' = M.findWithDefault c c $ view aliases s
+                   cPlusArgs = splitOn " " c'
+                   c'' = head cPlusArgs
+                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+               if isBuiltin c''
+                 then runBuiltin c'' args
+                 else runCom  c'' args
+             Alias k v -> do modify $ over aliases $ M.insert k v
+                             return $ Str v
+             Seq a b -> do
+               ra <- eval a
+               rb <- eval b
+               return $ ra `mappend` rb
+             IfElse c e1 (Just e2) -> do
+               b <- evalCond c
+               if b
+                 then eval e1
+                 else eval e2
+             IfElse c e Nothing -> do
+               b <- evalCond c
+               if b
+                 then eval e
+                 else return Null
+             Empty -> return Null
   where lookup2 a1 a2 e = case lookup e a1 of
                            Just r1 -> r1
                            Nothing -> case M.lookup e a2 of
                                        Just r2 -> r2
                                        Nothing -> e
 
+-- TODO add ref'd var to parser, add to evalCond here
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ length a > length b
+evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
+evalCond (Gt (StrLiteral a) (IntLiteral b)) = return $ a > (show b)
+evalCond (Gt (IntLiteral a) (StrLiteral b)) = return $ (show a) > b
 
 evalCond (Lt (IntLiteral a) (IntLiteral b)) = return $ a < b
 evalCond (Lt (StrLiteral a) (StrLiteral b)) = return $ length a < length b
+evalCond (Lt (StrLiteral a) (IntLiteral b)) = return $ a < (show b)
+evalCond (Lt (IntLiteral a) (StrLiteral b)) = return $ (show a) < b
 
 evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
 evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
--- unfinished
+evalCond (Eql (StrLiteral a) (IntLiteral b)) = return $ a == (show b)
+evalCond (Eql (IntLiteral a) (StrLiteral b)) = return $ (show a) == b
 
--- TODO fuck with parser/lexer to add whitespace to string literals
--- TODO either do some seperating of alias output to com/args, or use different datatype
+-- TODO fork to bg
+-- TODO redirection
 main :: IO ()
 main = do
   tid <- myThreadId
@@ -166,16 +221,15 @@ main = do
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
-  void $ iterateM_ (\prev -> do
+  void $ iterateM' (\prev -> do
                        line <- readline ">> "
                        case line of
                         Just l -> do addHistory l  -- for readline
                                      when (not $ null l) $ appendFile histFile $ l ++ "\n"
---                                     let ast = plex l
                                      astM <- cleanup $ plex l
                                      case astM of
                                       Just ast -> do
-                                        print ast
+                                        putStrLn $ color $ show ast
                                         out <- runStateT (eval ast) (fromJust prev)
                                         print out
                                         let laststate = snd out
@@ -184,10 +238,13 @@ main = do
                                         putStrLn $ "Lexical Error: " ++ l
                                         return $ prev
                         Nothing -> return Nothing
-                   ) $ Just $ InternalState M.empty M.empty M.empty
+                   ) $ Just $ InternalState { _vars      = M.empty
+                                            , _jobsTable = M.empty
+                                            , _aliases   = M.fromList [("ls", "ls --color")]
+                                            }
 
-iterateM_ :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
-iterateM_ f = g
+iterateM' :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
+iterateM' f = g
     where g x = case x of
                   Nothing -> putStrLn "" >> return Nothing
                   Just z  -> f (Just z) >>= g
@@ -195,7 +252,10 @@ iterateM_ f = g
 cleanup :: a -> IO (Maybe a)
 cleanup x =  Ex.catch (x `seq` return (Just x)) handler
     where
-          handler ex = return Nothing  `const`  (ex :: Ex.ErrorCall)
+          handler (ex :: Ex.ErrorCall) = return Nothing
+
+color :: String -> String
+color s = "\x1b[32m" ++ s ++ "\x1b[0m"
 
 
 -- modified from function in System.Process to take an environment as an argument

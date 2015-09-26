@@ -29,7 +29,6 @@ tokens :-
     alias				{ const TokAlias }
     $word+                              { TokWord }
 
-
 {
 -- each type String -> Token
 
