@@ -27,6 +27,7 @@ import Lexer (lexer, Token(..))
         else    { TokElse }
         then    { TokThen }
         alias   { TokAlias }
+        pipe    { TokPipe }
 
 %left ';' -- precedence bitches
 %left '='
@@ -36,6 +37,7 @@ import Lexer (lexer, Token(..))
 
 Line: Expr gt ConstStr            { RedirectOut $1 (fromLit $3) }
     | Expr lt ConstStr            { RedirectIn $1 (fromLit $3) }
+    | Expr pipe Expr              { Pipe $1 $3 }
     | Expr                        { $1 }
 
 Expr: Args                        { ComArgs (head $1) (tail $1) }
@@ -89,6 +91,7 @@ data Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
     | RedirectOut Expression String -- temp?
     | RedirectIn Expression String
+    | Pipe Expression Expression
     | IntLiteral Int
     | StrLiteral String
     | Empty
