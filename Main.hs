@@ -226,6 +226,8 @@ eval expr = case expr of
                                        Nothing -> e
 
 -- TODO add ref'd var to parser, add to evalCond here
+-- Have to check current state for declared variables
+-- OR do we want to declare a variable like Bash with $a (some symbol) for variable a
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
 evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
