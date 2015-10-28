@@ -1,12 +1,17 @@
 {-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+-- TODO use job table when dealing with processes
 module Main where
 import           Control.Concurrent       (myThreadId)
 import qualified Control.Exception        as Ex
 import           Control.Lens
+import           Control.Monad
 import           Control.Monad.State.Lazy
+import           Data.Functor
 import           Data.List                (isPrefixOf)
+import           Data.List.Split
+import qualified Data.Map.Lazy            as M
 import           Data.Maybe               (fromJust, fromMaybe)
 import           Data.Monoid
 import           Parser
@@ -20,19 +25,44 @@ import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
-
-import           Data.List.Split
-import qualified Data.Map.Lazy            as M
 -- import           System.Posix.Env
 --------------------------------------------------------------------- Types
+
+data Process = Process { _argv      :: [String] -- to pass to exec
+                       , _pid       :: ProcessHandle
+                       , _completed :: Bool
+                       , _stopped   :: Bool
+                       , _status    :: ExitCode
+ }
+instance Show Process where
+  show (Process a p c s st) = show a ++ show c ++ show s ++ show st
+
+makeLenses ''Process
+
+data Job = Job { _command  :: String -- what is this
+               , _procs    :: [Process]
+               , _gid      :: String -- have to think about this
+               , _notified :: Bool -- has user been notified of stopped job
+--               , _tmodes :: -- saved terminal modes termios idk
+               , _stdin    :: StdStream
+               , _stdout   :: StdStream
+               , _stderr   :: StdStream
+}
+instance Show Job where
+  show (Job c p g n i o e) = show c ++ show p ++ show g ++ show n
+
+makeLenses ''Job
+
+type JobId = Int
+type JobsTable = M.Map JobId Job -- switch to linked list?
 
 type VarMap    = M.Map String String
 type AliasMap  = M.Map String String
 type Eval = StateT InternalState IO
 data InternalState = InternalState { _vars      :: VarMap
-                                   , _jobsTable :: M.Map () () -- not implemented yet
+                                   , _jobsTable :: JobsTable
                                    , _aliases   :: AliasMap
-                                   } deriving (Show, Read)
+                                   } deriving (Show)
 makeLenses ''InternalState
 
 data Val  = Str String
@@ -50,7 +80,7 @@ cwd :: IO FilePath
 cwd = getCurrentDirectory
 
 isBuiltin :: String -> Bool
-isBuiltin s = s `elem` ["cd"]
+isBuiltin = (`elem` ["cd"])
 
 runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
