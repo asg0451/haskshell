@@ -23,6 +23,7 @@ tokens :-
     [\)]				{ const TokRP }
     [\"]				{ const TokDQ }
     "=="				{ const TokEql }
+    ">>"				{ const TokAppendOut }
     if					{ const TokIf }
     else				{ const TokElse }
     then				{ const TokThen }
@@ -44,6 +45,7 @@ data Token
     | TokDQ
     | TokGT
     | TokLT
+    | TokAppendOut
     | TokEql
     | TokIf
     | TokElse

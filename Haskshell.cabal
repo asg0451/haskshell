@@ -12,13 +12,13 @@ maintainer:          miles.frankel@gmail.com
 -- copyright:
 -- category:
 build-type:          Simple
-extra-source-files:  Parser.y Lexer.x README.org
+extra-source-files:  Parser.y Lexer.x
 cabal-version:       >=1.10
 
 executable Haskshell
   main-is:             Main.hs
---  other-modules:       Types, Parser, Lexer
-  -- other-extensions:
+  other-modules:       Types, Parser, Lexer
+  hs-source-dirs:      src
   ghc-options:         -O2 -fwarn-unused-imports -threaded
   build-depends:       base >=4.7
                      , mtl >=2.1
@@ -33,6 +33,6 @@ executable Haskshell
 -- >= 1.2.3.1
                      , containers >= 0.5.5.0
                      , split
-  -- hs-source-dirs:
+
   build-tools:         happy, alex
   default-language:    Haskell2010

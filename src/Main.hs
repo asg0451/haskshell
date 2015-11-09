@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiWayIf          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
+
 -- TODO use job table when dealing with processes
 module Main where
 import           Control.Concurrent       (myThreadId)
@@ -25,55 +26,10 @@ import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
--- import           System.Posix.Env
+import           Types
 --------------------------------------------------------------------- Types
 
-data Process = Process { _argv      :: [String] -- to pass to exec
-                       , _pid       :: ProcessHandle
-                       , _completed :: Bool
-                       , _stopped   :: Bool
-                       , _status    :: ExitCode
- }
-instance Show Process where
-  show (Process a p c s st) = show a ++ show c ++ show s ++ show st
 
-makeLenses ''Process
-
-data Job = Job { _command  :: String -- what is this
-               , _procs    :: [Process]
-               , _gid      :: String -- have to think about this
-               , _notified :: Bool -- has user been notified of stopped job
---               , _tmodes :: -- saved terminal modes termios idk
-               , _stdin    :: StdStream
-               , _stdout   :: StdStream
-               , _stderr   :: StdStream
-}
-instance Show Job where
-  show (Job c p g n i o e) = show c ++ show p ++ show g ++ show n
-
-makeLenses ''Job
-
-type JobId = Int
-type JobsTable = M.Map JobId Job -- switch to linked list?
-
-type VarMap    = M.Map String String
-type AliasMap  = M.Map String String
-type Eval = StateT InternalState IO
-data InternalState = InternalState { _vars      :: VarMap
-                                   , _jobsTable :: JobsTable
-                                   , _aliases   :: AliasMap
-                                   } deriving (Show)
-makeLenses ''InternalState
-
-data Val  = Str String
-          | Null
-            deriving Show
-
-instance Monoid Val where  -- todo: make it so that failed commands have some authority
-    mempty = Null
-    (Str a) `mappend` (Str b) = Str $ unlines [b,a] -- only commands give output right?
-    (Str a) `mappend` Null = Str a
-    Null    `mappend` x = x
 ------------------------------------------------------------------------
 
 cwd :: IO FilePath
@@ -103,31 +59,36 @@ runBuiltin "cd" as = do
                                   success
 
 success :: Eval Val
-success = return $ Str $ show ExitSuccess
+success = return $ ExitSuccess
 
 failure :: Int -> Eval Val
-failure = return . Str . show . ExitFailure
+failure = return . ExitFailure
 
 ---------- functions to run external commands
 
 runCom :: String -> [String] -> Eval Val
 runCom c as = do
   rval <- liftIO $ runProc $ proc_ c as
-  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+  return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. ls > file
-runComRedirOut :: String -> [String] -> FilePath -> Eval Val
-runComRedirOut c as p = do
-  h <- liftIO $ openFile p WriteMode
+--               append?
+-- bug: appends to beginning of file WHAT
+-- todo WAT WAT
+runComRedirOut :: Bool -> String -> [String] -> FilePath -> Eval Val
+runComRedirOut app c as p = do
+  h <- if app
+       then liftIO $ openFile p WriteMode
+       else liftIO $ openFile p AppendMode
   rval <- liftIO $ runProc $ (proc_ c as) {std_out = UseHandle h}
-  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+  return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. ls < file
 runComRedirIn :: String -> [String] -> FilePath -> Eval Val
 runComRedirIn c as p = do
   h <- liftIO $ openFile p ReadMode
   rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
-  return $ fromMaybe (Str $ show $ ExitFailure 127) rval
+  return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. echo "hi" | cat
 -- todo error check
@@ -138,7 +99,7 @@ runComsPiped c as d bs = do
  hs' <- liftIO $ runProcReturningHandles $ (proc_ d bs) {std_in = UseHandle pout}
  liftIO $ waitForProcess (view _4 $ fromJust hs)
  liftIO $ waitForProcess (view _4 $ fromJust hs')
- return $ Str $ show ExitSuccess
+ return $ ExitSuccess
 
 
 -- createProcess returns (mb_stdin_hdl, mb_stdout_hdl, mb_stderr_hdl, ph)
@@ -147,7 +108,7 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
                case hs of
                 Just (_, _, _, h) -> do
                   rval <- waitForProcess h
-                  return $ Just $ Str $ show rval
+                  return $ Just $ rval
                 Nothing -> return Nothing
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
@@ -168,7 +129,7 @@ runProcReturningHandles c = do
 
 eval :: Expression -> Eval Val
 eval expr = case expr of
-             RedirectOut (ComArgs c as) f -> do
+             RedirectOut app (ComArgs c as) f -> do
                e <- liftIO $ getEnvironment
                s <- get
                let c' = M.findWithDefault c c $ view aliases s
@@ -176,8 +137,8 @@ eval expr = case expr of
                    c'' = head cPlusArgs
                    args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
                if isBuiltin c''
-                 then runBuiltin c'' args -- todo
-                 else runComRedirOut c'' args f
+                 then runBuiltin c'' args
+                 else runComRedirOut app c'' args f
              RedirectIn (ComArgs c as) f -> do
                e <- liftIO $ getEnvironment
                s <- get
@@ -189,8 +150,8 @@ eval expr = case expr of
                  then runBuiltin c'' args -- todo
                  else runComRedirIn c'' args f
 
-             RedirectOut e f -> return Null -- todo deal with this
-             RedirectIn  e f -> return Null
+             RedirectOut a e f -> return $ ExitFailure 42 -- todo deal with this
+             RedirectIn  e f -> return $ ExitFailure 42
 
              Pipe (ComArgs c as) (ComArgs d bs) -> do
                e <- liftIO $ getEnvironment
@@ -207,21 +168,16 @@ eval expr = case expr of
                  then runBuiltin c'' args -- todo
                  else runComsPiped c'' args d'' dargs
 
-
-             IntLiteral i -> return $ Str $ show i
-             StrLiteral s -> return $ Str s
+             IntLiteral i -> return ExitSuccess
+             StrLiteral s -> return ExitSuccess
              Assign v (IntLiteral i) -> do
                modify $ \st -> over vars (M.insert v (show i)) st
-               return $ Str $ show i
+               return ExitSuccess
              Assign v (StrLiteral s) -> do
                modify $ \st -> over vars (M.insert v s) st
-               return $ Str s
-             ComArgs c [] -> do     -- this is wrong. see TODO's
-               val <- liftIO $ lookupEnv c
-               case val of
-                Just v -> return $ Str v
-                Nothing  -> return Null
-              -- TODO add support for forking commands (background)
+               return ExitSuccess
+
+             -- TODO add support for forking commands (background)
              ComArgs c as -> do
                e <- liftIO $ getEnvironment
                s <- get
@@ -233,11 +189,14 @@ eval expr = case expr of
                  then runBuiltin c'' args
                  else runCom  c'' args
              Alias k v -> do modify $ over aliases $ M.insert k v
-                             return $ Str v
+                             return ExitSuccess
              Seq a b -> do
                ra <- eval a
-               rb <- eval b
-               return $ ra `mappend` rb
+               case ra of
+                 ExitSuccess -> do
+                          rb <- eval b
+                          return $ rb
+                 ExitFailure _ -> do return ra
              IfElse c e1 (Just e2) -> do
                b <- evalCond c
                if b
@@ -247,8 +206,8 @@ eval expr = case expr of
                b <- evalCond c
                if b
                  then eval e
-                 else return Null
-             Empty -> return Null
+                 else return ExitSuccess
+             Empty -> return ExitSuccess
   where lookup2 a1 a2 e = case lookup e a1 of
                            Just r1 -> r1
                            Nothing -> case M.lookup e a2 of

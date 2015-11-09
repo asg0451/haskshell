@@ -1,5 +1,0 @@
-* Syntax
-** 'let' for assign var
-** $ for var ref?
-
-* Features to be implemented

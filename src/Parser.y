@@ -22,6 +22,7 @@ import Lexer (lexer, Token(..))
         int     { TokInt $$}
         gt      { TokGT }
         lt      { TokLT }
+        '>>'    { TokAppendOut }
         eql     { TokEql }
         if      { TokIf }
         else    { TokElse }
@@ -35,8 +36,9 @@ import Lexer (lexer, Token(..))
 
 %%  --- Productions
 
-Line: Expr gt ConstStr            { RedirectOut $1 (fromLit $3) }
-    | Expr lt ConstStr            { RedirectIn $1 (fromLit $3) }
+Line: Expr gt ConstStr            { RedirectOut False $1 (fromLit $3) }
+    | ConstStr lt Expr            { RedirectIn $3 (fromLit $1) }
+    | Expr '>>' ConstStr          { RedirectOut True $1 (fromLit $3) }
     | Expr pipe Expr              { Pipe $1 $3 }
     | Expr                        { $1 }
 
@@ -89,7 +91,7 @@ data Expression
     | Alias String String
     | Seq Expression Expression
     | IfElse Condition Expression (Maybe Expression)  -- else clause optional
-    | RedirectOut Expression String -- temp?
+    | RedirectOut Bool Expression String -- append or not
     | RedirectIn Expression String
     | Pipe Expression Expression
     | IntLiteral Int
