@@ -111,7 +111,7 @@ runProc c = do hs <- Ex.catch (createProcess c >>= return . Just) handler
                   return $ Just $ rval
                 Nothing -> return Nothing
   where
-    handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
+    handler (e :: Ex.SomeException) = putStr "error caught: " >> print e >> return Nothing
 
 
 runProcReturningHandles :: CreateProcess -> IO (Maybe (Maybe Handle, Maybe Handle, Maybe Handle, ProcessHandle))
@@ -245,8 +245,8 @@ main = do
   tid <- myThreadId
   {- Ex.throwTo tid Ex.UserInterrupt -}
   -- catch ctrl-c
-  installHandler keyboardSignal (Catch (print "ctrl-c caught")) Nothing
-  -- catch ctrl-z
+  installHandler keyboardSignal (Catch (putStr "ctrl-c caught")) Nothing
+  -- catch ctrl-z. doesn't work.
   installHandler sigTSTP (Catch (print "ctrl-z" >> Ex.throwTo tid Ex.UserInterrupt)) Nothing
   home <- getEnv "HOME"
   let histFile = home ++ "/.HaskHistory"
