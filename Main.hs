@@ -343,7 +343,7 @@ proc_ cmd args = CreateProcess { cmdspec = RawCommand cmd args
                                      , create_group = False
                                      , delegate_ctlc = False
 -- below required from 'process-1.3.0.0'
-                                     , detach_console = False     -- windows
-                                     , create_new_console = False -- windows
-                                     , new_session = False
+                                     -- , detach_console = False     -- windows
+                                     -- , create_new_console = False -- windows
+                                     -- , new_session = False
                                      }

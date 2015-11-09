@@ -20,7 +20,7 @@ import Char (ord)
 {-# LINE 1 "templates/wrappers.hs" #-}
 {-# LINE 1 "<built-in>" #-}
 {-# LINE 1 "<command-line>" #-}
-{-# LINE 8 "<command-line>" #-}
+{-# LINE 9 "<command-line>" #-}
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 
 # 17 "/usr/include/stdc-predef.h" 3 4
@@ -66,7 +66,26 @@ import Char (ord)
 
 
 
-{-# LINE 8 "<command-line>" #-}
+{-# LINE 9 "<command-line>" #-}
+{-# LINE 1 "/home/miles/.stack/programs/x86_64-linux/ghc-7.10.2/lib/ghc-7.10.2/include/ghcversion.h" #-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LINE 9 "<command-line>" #-}
 {-# LINE 1 "templates/wrappers.hs" #-}
 -- -----------------------------------------------------------------------------
 -- Alex wrapper code.
@@ -256,13 +275,7 @@ alex_action_17 =  const TokPipe
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
 {-# LINE 1 "<command-line>" #-}
-
-
-
-
-
-
-
+{-# LINE 8 "<command-line>" #-}
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 
 # 17 "/usr/include/stdc-predef.h" 3 4
@@ -308,7 +321,26 @@ alex_action_17 =  const TokPipe
 
 
 
-{-# LINE 7 "<command-line>" #-}
+{-# LINE 8 "<command-line>" #-}
+{-# LINE 1 "/home/miles/.stack/programs/x86_64-linux/ghc-7.10.2/lib/ghc-7.10.2/include/ghcversion.h" #-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LINE 8 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- -----------------------------------------------------------------------------
 -- ALEX TEMPLATE

@@ -549,7 +549,7 @@ plex = (parse . lexer)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
 {-# LINE 1 "<command-line>" #-}
-{-# LINE 8 "<command-line>" #-}
+{-# LINE 9 "<command-line>" #-}
 # 1 "/usr/include/stdc-predef.h" 1 3 4
 
 # 17 "/usr/include/stdc-predef.h" 3 4
@@ -595,7 +595,26 @@ plex = (parse . lexer)
 
 
 
-{-# LINE 8 "<command-line>" #-}
+{-# LINE 9 "<command-line>" #-}
+{-# LINE 1 "/home/miles/.stack/programs/x86_64-linux/ghc-7.10.2/lib/ghc-7.10.2/include/ghcversion.h" #-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LINE 9 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp 
 
