@@ -229,14 +229,12 @@ evalCond (Lt (IntLiteral a) (StrLiteral b)) = return $ (show a) < b
 evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
 evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
 evalCond (Eql (StrLiteral a) (IntLiteral b)) = return $ a == (show b)
-evalCond (Eql (IntLiteral a) (StrLiteral b)) = do
+evalCond (Eql (IntLiteral a) (StrLiteral b)) = do -- no worky TODO
   e <- liftIO $ getEnvironment
   s <- get
   let vmap = view vars s
-  case M.lookup b vmap of
-   Nothing -> return $ (show a) == b
-   Just b' -> return $ (show a) == b'
-
+  let b' = M.findWithDefault b b vmap
+  return $ show a == show b'
 
 -- TODO fork to bg
 -- TODO redirection
