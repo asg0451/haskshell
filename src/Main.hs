@@ -3,6 +3,7 @@
 {-# LANGUAGE TemplateHaskell     #-}
 
 -- TODO use job table when dealing with processes
+-- TODO parsing for more than one pipe
 module Main where
 import           Control.Concurrent       (myThreadId)
 import qualified Control.Exception        as Ex
@@ -15,7 +16,6 @@ import           Data.List.Split
 import qualified Data.Map.Lazy            as M
 import           Data.Maybe               (fromJust, fromMaybe)
 import           Data.Monoid
-import           Parser
 import           System.Console.Readline
 import           System.Directory
 import           System.Environment
@@ -26,6 +26,8 @@ import           System.Posix.Signals     (Handler (..), installHandler,
                                            keyboardSignal, sigTSTP)
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
+
+import           Parser
 import           Types
 --------------------------------------------------------------------- Types
 
@@ -78,8 +80,8 @@ runCom c as = do
 runComRedirOut :: Bool -> String -> [String] -> FilePath -> Eval Val
 runComRedirOut app c as p = do
   h <- if app
-       then liftIO $ openFile p WriteMode
-       else liftIO $ openFile p AppendMode
+       then liftIO $ openFile p AppendMode
+       else liftIO $ openFile p WriteMode
   rval <- liftIO $ runProc $ (proc_ c as) {std_out = UseHandle h}
   return $ fromMaybe (ExitFailure 127) rval
 
@@ -214,7 +216,10 @@ eval expr = case expr of
                                        Just r2 -> r2
                                        Nothing -> e
 
--- TODO add ref'd var to parser, add to evalCond here
+-- TODO FRANK when eval strliteral -> check state if string is stored as value first
+-- example: a = 5
+-- if 5 == a then echo hi
+-- a is seen as a string, instead check if a is in state first
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
 evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
@@ -251,27 +256,30 @@ main = do
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
-  void $ iterateM' (\prev -> do
-                       line <- readline ">> "
-                       case line of
-                        Just l -> do addHistory l  -- for readline
-                                     when (not $ null l) $ appendFile histFile $ l ++ "\n"
-                                     astM <- cleanup $ plex l
-                                     case astM of
-                                      Just ast -> do
-                                        putStrLn $ color $ show ast
-                                        out <- runStateT (eval ast) (fromJust prev)
-                                        print out
-                                        let laststate = snd out
-                                        return $ Just laststate
-                                      Nothing -> do
-                                        putStrLn $ "Lexical Error: " ++ l
-                                        return $ prev
-                        Nothing -> return Nothing
-                   ) $ Just $ InternalState { _vars      = M.empty
-                                            , _jobsTable = M.empty
-                                            , _aliases   = M.fromList [("ls", "ls --color")]
-                                            }
+  void $ iterateM' (iteration histFile) $
+       Just $ InternalState { _vars      = M.empty
+                            , _jobsTable = M.empty
+                            , _aliases   = M.fromList [("ls", "ls --color")]
+                            }
+
+      where iteration histFile prev =  do
+              line <- readline ">> "
+              case line of
+                Just l -> do addHistory l  -- for readline
+                             when (not $ null l) $ appendFile histFile $ l ++ "\n"
+                             astM <- cleanup $ plex l
+                             case astM of
+                               Just ast -> do
+                                         putStrLn $ green $ show ast
+                                         out <- runStateT (eval ast) (fromJust prev)
+                                         putStrLn $ red $ show out
+                                         let laststate = snd out
+                                         return $ Just laststate
+                               Nothing -> do
+                                         putStrLn $ "Lexical Error: " ++ l
+                                         return $ prev
+                Nothing -> return Nothing
+
 
 iterateM' :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
 iterateM' f = g
@@ -284,8 +292,11 @@ cleanup x =  Ex.catch (x `seq` return (Just x)) handler
     where
           handler (ex :: Ex.ErrorCall) = return Nothing
 
-color :: String -> String
-color s = "\x1b[32m" ++ s ++ "\x1b[0m"
+green :: String -> String
+green s = "\x1b[32m" ++ s ++ "\x1b[0m"
+
+red :: String -> String
+red s = "\x1b[31m" ++ s ++ "\x1b[0m"
 
 
 -- modified from function in System.Process to take an environment as an argument

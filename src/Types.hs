@@ -19,8 +19,6 @@ import qualified System.Process           as P (cwd, env)
 
 type Val = ExitCode
 
-
-
 data Process = Process { _argv      :: [String] -- to pass to exec
                        , _pid       :: ProcessHandle
                        , _completed :: Bool

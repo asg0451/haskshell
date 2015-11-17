@@ -32,6 +32,7 @@ import Lexer (lexer, Token(..))
 
 %left ';' -- precedence bitches
 %left '='
+
 -- %left else then    -- this line changes precedence of if stmts
 
 %%  --- Productions
@@ -39,7 +40,7 @@ import Lexer (lexer, Token(..))
 Line: Expr gt ConstStr            { RedirectOut False $1 (fromLit $3) }
     | ConstStr lt Expr            { RedirectIn $3 (fromLit $1) }
     | Expr '>>' ConstStr          { RedirectOut True $1 (fromLit $3) }
-    | Expr pipe Expr              { Pipe $1 $3 }
+    | Expr pipe Expr              { Pipe $1 $3 }  -- TODO should go in Expr
     | Expr                        { $1 }
 
 Expr: Args                        { ComArgs (head $1) (tail $1) }
