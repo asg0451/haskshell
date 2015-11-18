@@ -233,7 +233,7 @@ eval expr = case expr of
                            Just r1 -> r1
                            Nothing -> case lookup e a1 of
                                        Just r2 -> r2
-                                       Nothing -> e
+                                       Nothing -> "" -- empty if not found. like bash
 
 -- TODO FRANK when eval strliteral -> check state if string is stored as value first
 -- example: a = 5
