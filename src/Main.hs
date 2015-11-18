@@ -4,6 +4,7 @@
 
 -- TODO use job table when dealing with processes
 -- TODO parsing for more than one pipe
+-- TODO var refs in aliases should get de-ref'd
 module Main where
 import           Control.Concurrent       (myThreadId)
 import qualified Control.Exception        as Ex
@@ -132,59 +133,25 @@ runProcReturningHandles c = do
 eval :: Expression -> Eval Val
 eval expr = case expr of
              RedirectOut app (ComArgs c as) f -> do
-               e <- liftIO $ getEnvironment
-               s <- get
-               let c' = M.findWithDefault c c $ view aliases s
-                   cPlusArgs = splitOn " " c'
-                   c'' = head cPlusArgs
-                   args = tail cPlusArgs ++ map
-                          (\a -> case a of
-                                   Str s -> s
-                                   Ref r -> lookup2 e (view vars s) r
-                          ) as
-               if isBuiltin c''
-                 then runBuiltin c'' args
-                 else runComRedirOut app c'' args f
+                        (com, args) <- evalComArgs c as
+                        if isBuiltin com
+                        then runBuiltin com args
+                        else runComRedirOut app com args f
              RedirectIn (ComArgs c as) f -> do
-               e <- liftIO $ getEnvironment
-               s <- get
-               let c' = M.findWithDefault c c $ view aliases s
-                   cPlusArgs = splitOn " " c'
-                   c'' = head cPlusArgs
-                   args = tail cPlusArgs ++ map
-                          (\a -> case a of
-                                   Str s -> s
-                                   Ref r -> lookup2 e (view vars s) r
-                          ) as
-               if isBuiltin c''
-                 then runBuiltin c'' args -- todo
-                 else runComRedirIn c'' args f
+                        (com, args) <- evalComArgs c as
+                        if isBuiltin com
+                        then runBuiltin com args -- todo
+                        else runComRedirIn com args f
 
              RedirectOut a e f -> return $ ExitFailure 42 -- todo deal with this
              RedirectIn  e f -> return $ ExitFailure 42
 
              Pipe (ComArgs c as) (ComArgs d bs) -> do
-               e <- liftIO $ getEnvironment
-               s <- get
-               let c' = M.findWithDefault c c $ view aliases s
-                   cPlusArgs = splitOn " " c'
-                   c'' = head cPlusArgs
-                   args = tail cPlusArgs ++ map
-                          (\a -> case a of
-                                   Str s -> s
-                                   Ref r -> lookup2 e (view vars s) r
-                          ) as
-                   d' = M.findWithDefault d d $ view aliases s
-                   dPlusArgs = splitOn " " d'
-                   d'' = head dPlusArgs
-                   dargs = tail cPlusArgs ++ map
-                           (\a -> case a of
-                                    Str s -> s
-                                    Ref r -> lookup2 e (view vars s) r
-                           ) as
-               if isBuiltin c''
-                 then runBuiltin c'' args -- todo
-                 else runComsPiped c'' args d'' dargs
+                        (com, args) <- evalComArgs c as
+                        (com2, args2) <- evalComArgs d bs
+                        if isBuiltin com
+                        then runBuiltin com args -- todo
+                        else runComsPiped com args com2 args2
 
              Assign v (Str s) -> do
                modify $ \st -> over vars (M.insert v s) st
@@ -195,19 +162,11 @@ eval expr = case expr of
 
              -- TODO add support for forking commands (background)
              ComArgs c as -> do
-               e <- liftIO $ getEnvironment
-               s <- get
-               let c' = M.findWithDefault c c $ view aliases s
-                   cPlusArgs = splitOn " " c'
-                   c'' = head cPlusArgs
-                   args = tail cPlusArgs ++ map
-                          (\a -> case a of
-                                   Str s -> s
-                                   Ref r -> lookup2 e (view vars s) r
-                          ) as
-               if isBuiltin c''
-                 then runBuiltin c'' args
-                 else runCom  c'' args
+                        (com, args) <- evalComArgs c as
+                        if isBuiltin com
+                        then runBuiltin com args
+                        else runCom  com args
+
              Alias k v -> do modify $ over aliases $ M.insert k v
                              return ExitSuccess
              Seq a b -> do
@@ -229,11 +188,26 @@ eval expr = case expr of
                  else return ExitSuccess
 
              Empty -> return ExitSuccess
-  where lookup2 a1 a2 e = case M.lookup e a2 of -- call with env, then vars
-                           Just r1 -> r1
-                           Nothing -> case lookup e a1 of
-                                       Just r2 -> r2
-                                       Nothing -> "" -- empty if not found. like bash
+
+lookup2 a1 a2 e = case M.lookup e a2 of -- call with env, then vars
+                    Just r1 -> r1
+                    Nothing -> case lookup e a1 of
+                                 Just r2 -> r2
+                                 Nothing -> "" -- empty if not found. like bash
+
+evalComArgs :: String -> [StrOrRef] -> Eval (String, [String])
+evalComArgs c as = do
+  e <- liftIO $ getEnvironment
+  s <- get
+  let c' = M.findWithDefault c c $ view aliases s
+      cPlusArgs = splitOn " " c'
+      c'' = head cPlusArgs
+      args = tail cPlusArgs ++ map
+             (\a -> case a of
+                      Str s -> s
+                      Ref r -> lookup2 e (view vars s) r
+             ) as
+  return (c'', args)
 
 -- TODO FRANK when eval strliteral -> check state if string is stored as value first
 -- example: a = 5
