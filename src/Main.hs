@@ -4,6 +4,7 @@
 
 -- TODO use job table when dealing with processes
 -- TODO parsing for more than one pipe
+-- TODO var refs in aliases should get de-ref'd
 module Main where
 import           Control.Concurrent       (myThreadId)
 import qualified Control.Exception        as Ex
