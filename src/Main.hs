@@ -137,7 +137,11 @@ eval expr = case expr of
                let c' = M.findWithDefault c c $ view aliases s
                    cPlusArgs = splitOn " " c'
                    c'' = head cPlusArgs
-                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                   args = tail cPlusArgs ++ map
+                          (\a -> case a of
+                                   Str s -> s
+                                   Ref r -> lookup2 e (view vars s) r
+                          ) as
                if isBuiltin c''
                  then runBuiltin c'' args
                  else runComRedirOut app c'' args f
@@ -147,7 +151,11 @@ eval expr = case expr of
                let c' = M.findWithDefault c c $ view aliases s
                    cPlusArgs = splitOn " " c'
                    c'' = head cPlusArgs
-                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                   args = tail cPlusArgs ++ map
+                          (\a -> case a of
+                                   Str s -> s
+                                   Ref r -> lookup2 e (view vars s) r
+                          ) as
                if isBuiltin c''
                  then runBuiltin c'' args -- todo
                  else runComRedirIn c'' args f
@@ -161,23 +169,29 @@ eval expr = case expr of
                let c' = M.findWithDefault c c $ view aliases s
                    cPlusArgs = splitOn " " c'
                    c'' = head cPlusArgs
-                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                   args = tail cPlusArgs ++ map
+                          (\a -> case a of
+                                   Str s -> s
+                                   Ref r -> lookup2 e (view vars s) r
+                          ) as
                    d' = M.findWithDefault d d $ view aliases s
                    dPlusArgs = splitOn " " d'
                    d'' = head dPlusArgs
-                   dargs = map (lookup2 e (view vars s)) $ bs ++ tail dPlusArgs
+                   dargs = tail cPlusArgs ++ map
+                           (\a -> case a of
+                                    Str s -> s
+                                    Ref r -> lookup2 e (view vars s) r
+                           ) as
                if isBuiltin c''
                  then runBuiltin c'' args -- todo
                  else runComsPiped c'' args d'' dargs
 
-             IntLiteral i -> return ExitSuccess
-             StrLiteral s -> return ExitSuccess
-             Assign v (IntLiteral i) -> do
-               modify $ \st -> over vars (M.insert v (show i)) st
-               return ExitSuccess
-             Assign v (StrLiteral s) -> do
+             Assign v (Str s) -> do
                modify $ \st -> over vars (M.insert v s) st
                return ExitSuccess
+             Assign v (Ref r) -> do
+               modify $ \st -> over vars (M.insert v r) st -- TODO
+               return $ ExitFailure 42 -- not implemented
 
              -- TODO add support for forking commands (background)
              ComArgs c as -> do
@@ -186,7 +200,11 @@ eval expr = case expr of
                let c' = M.findWithDefault c c $ view aliases s
                    cPlusArgs = splitOn " " c'
                    c'' = head cPlusArgs
-                   args = map (lookup2 e (view vars s)) $ as ++ tail cPlusArgs
+                   args = tail cPlusArgs ++ map
+                          (\a -> case a of
+                                   Str s -> s
+                                   Ref r -> lookup2 e (view vars s) r
+                          ) as
                if isBuiltin c''
                  then runBuiltin c'' args
                  else runCom  c'' args
@@ -209,12 +227,13 @@ eval expr = case expr of
                if b
                  then eval e
                  else return ExitSuccess
+
              Empty -> return ExitSuccess
-  where lookup2 a1 a2 e = case lookup e a1 of
+  where lookup2 a1 a2 e = case M.lookup e a2 of -- call with env, then vars
                            Just r1 -> r1
-                           Nothing -> case M.lookup e a2 of
+                           Nothing -> case lookup e a1 of
                                        Just r2 -> r2
-                                       Nothing -> e
+                                       Nothing -> "" -- empty if not found. like bash
 
 -- TODO FRANK when eval strliteral -> check state if string is stored as value first
 -- example: a = 5
@@ -223,25 +242,21 @@ eval expr = case expr of
 
 
 evalCond :: Condition -> Eval Bool
-evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
-evalCond (Gt (StrLiteral a) (IntLiteral b)) = return $ a > (show b)
-evalCond (Gt (IntLiteral a) (StrLiteral b)) = return $ (show a) > b
+evalCond (Gt (Ref r) (Str s)) = return True
+evalCond (Gt (Str s) (Ref r)) = return True
+evalCond (Gt (Ref r1) (Ref r2)) = return True
+evalCond (Gt (Str s1) (Str s2)) = return True
 
-evalCond (Lt (IntLiteral a) (IntLiteral b)) = return $ a < b
-evalCond (Lt (StrLiteral a) (StrLiteral b)) = return $ length a < length b
-evalCond (Lt (StrLiteral a) (IntLiteral b)) = return $ a < (show b)
-evalCond (Lt (IntLiteral a) (StrLiteral b)) = return $ (show a) < b
+evalCond (Lt (Ref r) (Str s)) = return True
+evalCond (Lt (Str s) (Ref r)) = return True
+evalCond (Lt (Ref r1) (Ref r2)) = return True
+evalCond (Lt (Str s1) (Str s2)) = return True
 
-evalCond (Eql (IntLiteral a) (IntLiteral b)) = return $ a == b
-evalCond (Eql (StrLiteral a) (StrLiteral b)) = return $ length a == length b
-evalCond (Eql (StrLiteral a) (IntLiteral b)) = return $ a == (show b)
-evalCond (Eql (IntLiteral a) (StrLiteral b)) = do -- no worky TODO
-  e <- liftIO $ getEnvironment
-  s <- get
-  let vmap = view vars s
-  let b' = M.findWithDefault b b vmap
-  return $ show a == show b'
+evalCond (Eql (Ref r) (Str s)) = return True
+evalCond (Eql (Str s) (Ref r)) = return True
+evalCond (Eql (Ref r1) (Ref r2)) = return True
+evalCond (Eql (Str s1) (Str s2)) = return True
+
 
 -- TODO fork to bg
 -- TODO redirection

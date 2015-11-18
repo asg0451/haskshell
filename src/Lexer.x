@@ -7,9 +7,11 @@ module Lexer (lexer, Token(..)) where
 $digit = [0-9]
 $alpha = [a-zA-Z\._]
 $word  = [a-zA-Z\.\/_\-0-9]
+$newline = [\n]
 
 tokens :-
 
+    $newline+                           { const TokNL }
     \"(\\.|[^\"])*\"                    { TokWord . stripQuotes }
     $white+				;
     "#".*				;
@@ -28,6 +30,7 @@ tokens :-
     else				{ const TokElse }
     then				{ const TokThen }
     alias				{ const TokAlias }
+    [\$]$word+                          { TokVarRef }
     $word+                              { TokWord }
     [\|]                                { const TokPipe }
 
@@ -52,11 +55,14 @@ data Token
     | TokThen
     | TokAlias
     | TokPipe
+    | TokNL
+    | TokVarRef String
       deriving (Eq, Show)
 
 lexer :: String -> [Token]
 lexer = alexScanTokens
 
 stripQuotes :: String -> String
-stripQuotes s = reverse $ dropWhile (== '\"') $ reverse $ dropWhile (== '\"') s
+stripQuotes = reverse . dropWhile (== '\"') . reverse . dropWhile (== '\"')
+
 }
