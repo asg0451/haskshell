@@ -221,6 +221,7 @@ eval expr = case expr of
 -- if 5 == a then echo hi
 -- a is seen as a string, instead check if a is in state first
 
+
 evalCond :: Condition -> Eval Bool
 evalCond (Gt (IntLiteral a) (IntLiteral b)) = return $ a > b
 evalCond (Gt (StrLiteral a) (StrLiteral b)) = return $ a > b
