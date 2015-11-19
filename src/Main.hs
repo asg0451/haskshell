@@ -169,13 +169,20 @@ eval expr = case expr of
 
              Alias k v -> do modify $ over aliases $ M.insert k v
                              return ExitSuccess
+
              Seq a b -> do
                ra <- eval a
-               case ra of
-                 ExitSuccess -> do
-                          rb <- eval b
-                          return $ rb
-                 ExitFailure _ -> do return ra
+               rb <- eval b
+               return rb
+
+-- more appropriate for &&
+             -- Seq a b -> do
+             --   ra <- eval a
+             --   case ra of
+             --     ExitSuccess -> do
+             --              rb <- eval b
+             --              return $ rb
+             --     ExitFailure _ -> do return ra
              IfElse c e1 (Just e2) -> do
                b <- evalCond c
                if b
@@ -258,7 +265,7 @@ main = do
                                Just ast -> do
                                          putStrLn $ green $ show ast
                                          out <- runStateT (eval ast) (fromJust prev)
-                                         putStrLn $ red $ show out
+                                         putStrLn $ purple $ show out
                                          let laststate = snd out
                                          return $ Just laststate
                                Nothing -> do
@@ -298,8 +305,8 @@ cleanup x =  Ex.catch (x `seq` return (Just x)) handler
 green :: String -> String
 green s = "\x1b[32m" ++ s ++ "\x1b[0m"
 
-red :: String -> String
-red s = "\x1b[31m" ++ s ++ "\x1b[0m"
+purple :: String -> String
+purple s = "\x1b[35m" ++ s ++ "\x1b[0m"
 
 
 -- modified from function in System.Process to take an environment as an argument

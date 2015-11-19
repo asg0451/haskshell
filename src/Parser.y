@@ -51,7 +51,7 @@ Expr: Args                        { ComArgs (head $1) (tail $1) }
     | if Cond then Expr           { IfElse $2 $4 Nothing }
     | if Cond then Expr else Expr { IfElse $2 $4 (Just $6) }
     | '(' Expr ')'                { $2 }
-    |                             {- empty -}                 { Empty }
+    | {- empty -}                 { Empty }
 
 Args: SOR                         { [$1] } -- last
     | SOR Args                    { $1 : $2 }
@@ -71,7 +71,6 @@ ConstInt: int                     { show $1 }
 ConstStr: '"' '"'                 { "" }
         | '"' word '"'            { $2 }
         | word                    { $1 }
-
 
 
 {
