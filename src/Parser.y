@@ -44,7 +44,7 @@ Line: Expr gt ConstStr            { RedirectOut False $1 $3 }
     | Expr pipe Expr              { Pipe $1 $3 }  -- TODO should go in Expr
     | Expr                        { $1 }
 
-Expr: Args                        { ComArgs (checkCom $ head $1) (tail $1) }
+Expr: Args                        { ComArgs (head $1) (tail $1) }
     | ConstStr '=' SOR            { Assign $1 $3 }
     | alias ConstStr '=' ConstStr { Alias $2 $4 }
     | Expr ';' Expr               { Seq $1 $3 }
@@ -76,15 +76,16 @@ ConstStr: '"' '"'                 { "" }
 
 {
 
+-- TODO think about this
 checkCom :: StrOrRef -> String
 checkCom (Str s) = s
-checkCom (Ref r) = error $ "parse error --  " ++ r ++ " is not a valid command"
+checkCom (Ref r) = error $ "parse error -- " ++ r ++ " is not a valid command"
 
 parseError :: [Token] -> a
 parseError l = error $ "Parse error" ++ show l
 
 data Expression
-    = ComArgs String [StrOrRef]
+    = ComArgs StrOrRef [StrOrRef]
     | Assign String StrOrRef -- until subshells are a thing
     | Alias String String
     | Seq Expression Expression

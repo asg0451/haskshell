@@ -195,19 +195,22 @@ lookup2 a1 a2 e = case M.lookup e a2 of -- call with env, then vars
                                  Just r2 -> r2
                                  Nothing -> "" -- empty if not found. like bash
 
-evalComArgs :: String -> [StrOrRef] -> Eval (String, [String])
+evalComArgs :: StrOrRef -> [StrOrRef] -> Eval (String, [String])
 evalComArgs c as = do
   e <- liftIO $ getEnvironment
   s <- get
-  let c' = M.findWithDefault c c $ view aliases s
-      cPlusArgs = splitOn " " c'
-      c'' = head cPlusArgs
+  let c' = case c of
+              Str str -> str
+              Ref ref -> lookup2 e (view vars s) ref
+      c'' = M.findWithDefault c' c' $ view aliases s
+      cPlusArgs = splitOn " " c''
+      c''' = head cPlusArgs
       args = tail cPlusArgs ++ map
-             (\a -> case a of
-                      Str s -> s
-                      Ref r -> lookup2 e (view vars s) r
-             ) as
-  return (c'', args)
+                  (\a -> case a of
+                           Str s -> s
+                           Ref r -> lookup2 e (view vars s) r
+                  ) as
+  return (c''', args)
 
 -- TODO FRANK when eval strliteral -> check state if string is stored as value first
 -- example: a = 5
@@ -234,14 +237,8 @@ evalCond (Eql (Str s1) (Str s2)) = return True
 -- TODO redirection
 main :: IO ()
 main = do
-  tid <- myThreadId
-  {- Ex.throwTo tid Ex.UserInterrupt -}
-  -- catch ctrl-c
-  installHandler keyboardSignal (Catch (putStr "ctrl-c caught")) Nothing
-  -- catch ctrl-z. doesn't work.
-  installHandler sigTSTP (Catch (print "ctrl-z" >> Ex.throwTo tid Ex.UserInterrupt)) Nothing
-  home <- getEnv "HOME"
-  let histFile = home ++ "/.HaskHistory"
+  histFile <- getHistFile
+  setupHandlers
   c <- readFile histFile
   let pastHistory = lines c
   mapM_ addHistory pastHistory
@@ -268,6 +265,23 @@ main = do
                                          putStrLn $ "Lexical Error: " ++ l
                                          return $ prev
                 Nothing -> return Nothing
+
+
+getHistFile :: IO String
+getHistFile = do  home <- getEnv "HOME"
+                  let histFile = home ++ "/.HaskHistory"
+                  exist <- doesFileExist histFile
+                  when (not exist) $ writeFile histFile ""
+                  return histFile
+
+setupHandlers :: IO ()
+setupHandlers = void $ do
+  tid <- myThreadId
+  {- Ex.throwTo tid Ex.UserInterrupt -}
+  -- catch ctrl-c
+  installHandler keyboardSignal (Catch (putStr "ctrl-c caught")) Nothing
+  -- catch ctrl-z. doesn't work.
+  installHandler sigTSTP (Catch (print "ctrl-z" >> Ex.throwTo tid Ex.UserInterrupt)) Nothing
 
 
 iterateM' :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
