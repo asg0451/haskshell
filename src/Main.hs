@@ -214,23 +214,32 @@ evalComArgs c as = do
 -- if 5 == a then echo hi
 -- a is seen as a string, instead check if a is in state first
 
+-- everything is either a string or a reference denoted by "$" -- just swapped to this
 
 evalCond :: Condition -> Eval Bool
-evalCond (Gt (Ref r) (Str s)) = return True
-evalCond (Gt (Str s) (Ref r)) = return True
-evalCond (Gt (Ref r1) (Ref r2)) = return True
-evalCond (Gt (Str s1) (Str s2)) = return True
+evalCond (Gt (Ref r) (Str s))    = return $ GT == (compareRefToStr r s)
+evalCond (Gt (Str s) (Ref r))    = return $ LT == (compareRefToStr r s)
+evalCond (Gt (Ref r1) (Ref r2))  = return $ GT == (compareRefToRef r1 r2)
+evalCond (Gt (Str s1) (Str s2))  = return $ GT == (compareStrToStr s1 s2)
 
-evalCond (Lt (Ref r) (Str s)) = return True
-evalCond (Lt (Str s) (Ref r)) = return True
-evalCond (Lt (Ref r1) (Ref r2)) = return True
-evalCond (Lt (Str s1) (Str s2)) = return True
+evalCond (Lt (Ref r) (Str s))    = return $ LT == (compareRefToStr r s)
+evalCond (Lt (Str s) (Ref r))    = return $ GT == (compareRefToStr r s)
+evalCond (Lt (Ref r1) (Ref r2))  = return $ LT == (compareRefToRef r1 r2)
+evalCond (Lt (Str s1) (Str s2))  = return $ LT == (compareStrToStr s1 s2)
 
-evalCond (Eql (Ref r) (Str s)) = return True
-evalCond (Eql (Str s) (Ref r)) = return True
-evalCond (Eql (Ref r1) (Ref r2)) = return True
-evalCond (Eql (Str s1) (Str s2)) = return True
+evalCond (Eql (Ref r) (Str s))   = return $ EQ == (compareRefToStr r s)
+evalCond (Eql (Str s) (Ref r))   = return $ EQ == (compareRefToStr r s)
+evalCond (Eql (Ref r1) (Ref r2)) = return $ EQ == (compareRefToRef r1 r2)
+evalCond (Eql (Str s1) (Str s2)) = return $ EQ == (compareStrToStr s1 s2)
 
+compareRefToRef :: String -> String -> Ordering
+compareRefToRef r1 r2 = GT
+
+compareRefToStr :: String -> String -> Ordering
+compareRefToStr r s = GT
+
+compareStrToStr :: String -> String -> Ordering
+compareStrToStr s1 s2 = GT
 
 -- TODO fork to bg
 -- TODO redirection
