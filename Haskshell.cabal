@@ -26,6 +26,7 @@ executable Haskshell
                      , process >= 1.2.0.0
                      , lens
                      , filepath
+                     , safe
 -- >= 1.4.0.0
                      , directory
 -- >= 1.2.3.1

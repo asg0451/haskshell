@@ -28,6 +28,8 @@ import           System.Posix.Signals     (Handler (..), installHandler,
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
 
+import           Safe
+
 import           Parser
 import           Types
 --------------------------------------------------------------------- Types
@@ -238,8 +240,17 @@ compareRefToRef r1 r2 = GT
 compareRefToStr :: String -> String -> Ordering
 compareRefToStr r s = GT
 
+-- really just need to check for Double or String
 compareStrToStr :: String -> String -> Ordering
-compareStrToStr s1 s2 = GT
+compareStrToStr s1 s2
+  | (firstarg == Nothing) && (secondarg == Nothing) = s1 `compare` s2
+  | otherwise = fromJust $ (fmap compare firstarg) <*> secondarg
+  where
+    firstarg  = readDoubleOrString s1
+    secondarg = readDoubleOrString s2
+
+readDoubleOrString :: String -> Maybe Double
+readDoubleOrString s = readMay s :: Maybe Double
 
 -- TODO fork to bg
 -- TODO redirection
