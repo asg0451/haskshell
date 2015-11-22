@@ -219,32 +219,45 @@ evalComArgs c as = do
 -- everything is either a string or a reference denoted by "$" -- just swapped to this
 
 evalCond :: Condition -> Eval Bool
-evalCond (Gt (Ref r) (Str s))    = return $ GT == (compareRefToStr r s)
-evalCond (Gt (Str s) (Ref r))    = return $ LT == (compareRefToStr r s)
-evalCond (Gt (Ref r1) (Ref r2))  = return $ GT == (compareRefToRef r1 r2)
-evalCond (Gt (Str s1) (Str s2))  = return $ GT == (compareStrToStr s1 s2)
+evalCond (Gt (Ref r) (Str s))    = compareRefToStr r s GT
+evalCond (Gt (Str s) (Ref r))    = compareStrToRef s r GT
+evalCond (Gt (Ref r1) (Ref r2))  = compareRefToRef r1 r2 GT
+evalCond (Gt (Str s1) (Str s2))  = compareStrToStr s1 s2 GT
 
-evalCond (Lt (Ref r) (Str s))    = return $ LT == (compareRefToStr r s)
-evalCond (Lt (Str s) (Ref r))    = return $ GT == (compareRefToStr r s)
-evalCond (Lt (Ref r1) (Ref r2))  = return $ LT == (compareRefToRef r1 r2)
-evalCond (Lt (Str s1) (Str s2))  = return $ LT == (compareStrToStr s1 s2)
+evalCond (Lt (Ref r) (Str s))    = compareRefToStr r s LT
+evalCond (Lt (Str s) (Ref r))    = compareStrToRef s r LT
+evalCond (Lt (Ref r1) (Ref r2))  = compareRefToRef r1 r2 LT
+evalCond (Lt (Str s1) (Str s2))  = compareStrToStr s1 s2 LT
 
-evalCond (Eql (Ref r) (Str s))   = return $ EQ == (compareRefToStr r s)
-evalCond (Eql (Str s) (Ref r))   = return $ EQ == (compareRefToStr r s)
-evalCond (Eql (Ref r1) (Ref r2)) = return $ EQ == (compareRefToRef r1 r2)
-evalCond (Eql (Str s1) (Str s2)) = return $ EQ == (compareStrToStr s1 s2)
+evalCond (Eql (Ref r) (Str s))   = compareRefToStr r s EQ
+evalCond (Eql (Str s) (Ref r))   = compareStrToRef s r EQ
+evalCond (Eql (Ref r1) (Ref r2)) = compareRefToRef r1 r2 EQ
+evalCond (Eql (Str s1) (Str s2)) = compareStrToStr s1 s2 EQ
 
-compareRefToRef :: String -> String -> Ordering
-compareRefToRef r1 r2 = GT
+compareRefToRef :: String -> String -> Ordering -> Eval Bool
+compareRefToRef r1 r2 ord = do
+  e <- liftIO $ getEnvironment
+  s <- get
+  let val1 = lookup2 e (view vars s) r1
+      val2 = lookup2 e (view vars s) r2
+  compareStrToStr val1 val2 ord
 
-compareRefToStr :: String -> String -> Ordering
-compareRefToStr r s = GT
+compareRefToStr :: String -> String -> Ordering -> Eval Bool
+compareRefToStr r s ord = do
+  e <- liftIO $ getEnvironment
+  s <- get
+  let val1 = lookup2 e (view vars s) r
+  compareStrToStr val1 s ord
+
+compareStrToRef :: String -> String -> Ordering -> Eval Bool
+compareStrToRef s r ord = compareRefToStr r s ord
 
 -- really just need to check for Double or String
-compareStrToStr :: String -> String -> Ordering
-compareStrToStr s1 s2
-  | (firstarg == Nothing) && (secondarg == Nothing) = s1 `compare` s2
-  | otherwise = fromJust $ (fmap compare firstarg) <*> secondarg
+-- switch to type: String -> String -> Ordering -> Eval Bool
+compareStrToStr :: String -> String -> Ordering -> Eval Bool
+compareStrToStr s1 s2 ord
+  | (firstarg == Nothing) && (secondarg == Nothing) = return $ (s1 `compare` s2) == ord
+  | otherwise = return $ (fromJust $ (fmap compare firstarg) <*> secondarg) == ord
   where
     firstarg  = readDoubleOrString s1
     secondarg = readDoubleOrString s2
