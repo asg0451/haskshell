@@ -28,6 +28,8 @@ import           System.Posix.Signals     (Handler (..), installHandler,
 import           System.Process           hiding (cwd, env, proc)
 import qualified System.Process           as P (cwd, env)
 
+import           Safe
+
 import           Parser
 import           Types
 --------------------------------------------------------------------- Types
@@ -223,22 +225,58 @@ evalComArgs c as = do
 -- example: a = 5
 -- if 5 == a then echo hi
 -- a is seen as a string, instead check if a is in state first
+
+-- everything is either a string or a reference denoted by "$" -- just swapped to this
+
 evalCond :: Condition -> Eval Bool
-evalCond (Gt (Ref r) (Str s)) = return True
-evalCond (Gt (Str s) (Ref r)) = return True
-evalCond (Gt (Ref r1) (Ref r2)) = return True
-evalCond (Gt (Str s1) (Str s2)) = return True
+evalCond (Gt (Ref r) (Str s))    = compareRefToStr r s GT
+evalCond (Gt (Str s) (Ref r))    = compareStrToRef s r GT
+evalCond (Gt (Ref r1) (Ref r2))  = compareRefToRef r1 r2 GT
+evalCond (Gt (Str s1) (Str s2))  = compareStrToStr s1 s2 GT
 
-evalCond (Lt (Ref r) (Str s)) = return True
-evalCond (Lt (Str s) (Ref r)) = return True
-evalCond (Lt (Ref r1) (Ref r2)) = return True
-evalCond (Lt (Str s1) (Str s2)) = return True
+evalCond (Lt (Ref r) (Str s))    = compareRefToStr r s LT
+evalCond (Lt (Str s) (Ref r))    = compareStrToRef s r LT
+evalCond (Lt (Ref r1) (Ref r2))  = compareRefToRef r1 r2 LT
+evalCond (Lt (Str s1) (Str s2))  = compareStrToStr s1 s2 LT
 
-evalCond (Eql (Ref r) (Str s)) = return True
-evalCond (Eql (Str s) (Ref r)) = return True
-evalCond (Eql (Ref r1) (Ref r2)) = return True
-evalCond (Eql (Str s1) (Str s2)) = return True
+evalCond (Eql (Ref r) (Str s))   = compareRefToStr r s EQ
+evalCond (Eql (Str s) (Ref r))   = compareStrToRef s r EQ
+evalCond (Eql (Ref r1) (Ref r2)) = compareRefToRef r1 r2 EQ
+evalCond (Eql (Str s1) (Str s2)) = compareStrToStr s1 s2 EQ
 
+compareRefToRef :: String -> String -> Ordering -> Eval Bool
+compareRefToRef r1 r2 ord = do
+  e <- liftIO $ getEnvironment
+  s <- get
+  let val1 = lookup2 e (view vars s) r1
+      val2 = lookup2 e (view vars s) r2
+  compareStrToStr val1 val2 ord
+
+compareRefToStr :: String -> String -> Ordering -> Eval Bool
+compareRefToStr r s ord = do
+  e <- liftIO $ getEnvironment
+  st <- get
+  let val1 = lookup2 e (view vars st) r
+  compareStrToStr val1 s ord
+
+compareStrToRef :: String -> String -> Ordering -> Eval Bool
+compareStrToRef s r ord = compareRefToStr r s $ invert ord
+    where invert EQ = EQ
+          invert LT = GT
+          invert GT = LT
+
+-- really just need to check for Double or String
+-- switch to type: String -> String -> Ordering -> Eval Bool
+compareStrToStr :: String -> String -> Ordering -> Eval Bool
+compareStrToStr s1 s2 ord
+  | (firstarg == Nothing) && (secondarg == Nothing) = return $ (s1 `compare` s2) == ord
+  | otherwise = return $ (fromJust $ (fmap compare firstarg) <*> secondarg) == ord
+  where
+    firstarg  = readDoubleOrString s1
+    secondarg = readDoubleOrString s2
+
+readDoubleOrString :: String -> Maybe Double
+readDoubleOrString s = readMay s :: Maybe Double
 
 -- TODO fork to bg
 -- TODO redirection

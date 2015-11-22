@@ -17,7 +17,7 @@ executable Haskshell
   other-modules:       Types, Parser, Lexer
 --, Haskshell
   hs-source-dirs:      src
-  ghc-options:         -O2 -fwarn-unused-imports -threaded
+  ghc-options:         -O2 -fwarn-unused-imports  -fwarn-name-shadowing -threaded
   build-depends:       base >=4.7
                      , mtl >=2.1
                      , unix >=2.7 && <2.8
@@ -26,6 +26,7 @@ executable Haskshell
                      , process >= 1.2.0.0
                      , lens
                      , filepath
+                     , safe
 -- >= 1.4.0.0
                      , directory
 -- >= 1.2.3.1
