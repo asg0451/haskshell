@@ -245,12 +245,15 @@ compareRefToRef r1 r2 ord = do
 compareRefToStr :: String -> String -> Ordering -> Eval Bool
 compareRefToStr r s ord = do
   e <- liftIO $ getEnvironment
-  s <- get
-  let val1 = lookup2 e (view vars s) r
+  st <- get
+  let val1 = lookup2 e (view vars st) r
   compareStrToStr val1 s ord
 
 compareStrToRef :: String -> String -> Ordering -> Eval Bool
-compareStrToRef s r ord = compareRefToStr r s ord
+compareStrToRef s r ord = compareRefToStr r s $ invert ord
+    where invert EQ = EQ
+          invert LT = GT
+          invert GT = LT
 
 -- really just need to check for Double or String
 -- switch to type: String -> String -> Ordering -> Eval Bool
