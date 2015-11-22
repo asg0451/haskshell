@@ -123,8 +123,8 @@ runProcReturningHandles :: CreateProcess -> IO (Maybe (Maybe Handle, Maybe Handl
 runProcReturningHandles c = do
   hs <- Ex.catch (createProcess c >>= return . Just) handler
   case hs of
-   Just hs -> do
-     return $ Just $ hs
+   Just hs' -> do
+     return $ Just $ hs'
    Nothing -> return Nothing
   where
     handler (e :: Ex.SomeException) = print "error caught: " >> print e >> return Nothing
@@ -216,7 +216,7 @@ evalComArgs c as = do
       c''' = head cPlusArgs
       args = tail cPlusArgs ++ map
                   (\a -> case a of
-                           Str s -> s
+                           Str str -> str
                            Ref r -> lookup2 e (view vars s) r
                   ) as
   return (c''', args)
