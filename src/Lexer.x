@@ -30,6 +30,8 @@ tokens :-
     else				{ const TokElse }
     then				{ const TokThen }
     alias				{ const TokAlias }
+    [\*]$word*                          { TokGlobbedPath }
+    $word*[\*]                          { TokGlobbedPath }
     [\$]$word+                          { TokVarRef }
     $word+                              { TokWord }
     [\|]                                { const TokPipe }
@@ -57,6 +59,7 @@ data Token
     | TokPipe
     | TokNL
     | TokVarRef String
+    | TokGlobbedPath String
       deriving (Eq, Show)
 
 lexer :: String -> [Token]

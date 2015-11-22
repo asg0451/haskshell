@@ -13,23 +13,24 @@ import Lexer (lexer, Token(..))
 %error { parseError }
 
 %token
-        '='	{ TokAssign }
-        ';'	{ TokSemi }
-        '('	{ TokLP }
-        ')'	{ TokRP }
-        '"'	{ TokDQ }
-        word	{ TokWord $$}
-        ref	{ TokVarRef $$}
-        int     { TokInt $$}
-        gt      { TokGT }
-        lt      { TokLT }
-        '>>'    { TokAppendOut }
-        eql     { TokEql }
-        if      { TokIf }
-        else    { TokElse }
-        then    { TokThen }
-        alias   { TokAlias }
-        pipe    { TokPipe }
+        '='         { TokAssign         }
+        ';'         { TokSemi           }
+        '('         { TokLP             }
+        ')'         { TokRP             }
+        '"'         { TokDQ             }
+        word        { TokWord $$        }
+        ref         { TokVarRef $$      }
+        int         { TokInt $$         }
+        gt          { TokGT             }
+        lt          { TokLT             }
+        '>>'        { TokAppendOut      }
+        eql         { TokEql            }
+        if          { TokIf             }
+        else        { TokElse           }
+        then        { TokThen           }
+        alias       { TokAlias          }
+        pipe        { TokPipe           }
+        globbedPath { TokGlobbedPath $$ }
 
 %left ';' -- precedence bitches
 %left '='
@@ -61,16 +62,18 @@ Cond: SOR gt SOR                  { Gt $1 $3 }
     | SOR eql SOR                 { Eql $1 $3 }
 
 -- string or ref
-SOR: ConstInt                     { Str $1 }
-   | ConstStr                     { Str $1 }
+SOR: ConstStr                     { Str $1 }
    | ref                          { Ref $ drop 1 $ $1 }
 
 -- below: type is String
-ConstInt: int                     { show $1 }
 
 ConstStr: '"' '"'                 { "" }
         | '"' word '"'            { $2 }
         | word                    { $1 }
+        | int                     { show $1 }
+        | '"' int '"'             { show $2 }
+        | globbedPath             { $1 }
+        | '"' globbedPath '"'     { $2 }
 
 
 {

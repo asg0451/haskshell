@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell     #-}
 
+-- TODO globbing
 -- TODO use job table when dealing with processes
 -- TODO parsing for more than one pipe
 -- TODO var refs in aliases should get de-ref'd
@@ -30,10 +31,14 @@ import qualified System.Process           as P (cwd, env)
 
 import           Parser
 import           Types
---------------------------------------------------------------------- Types
+---------------------------------------------------------------------
 
 
-------------------------------------------------------------------------
+---------------------------------------------------------------------
+
+glob :: FilePath -> IO [FilePath]
+glob = getDirectoryContents
+
 
 cwd :: IO FilePath
 cwd = getCurrentDirectory
