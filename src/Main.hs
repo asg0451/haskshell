@@ -269,7 +269,7 @@ compareStrToRef s r ord = compareRefToStr r s $ invert ord
 -- switch to type: String -> String -> Ordering -> Eval Bool
 compareStrToStr :: String -> String -> Ordering -> Eval Bool
 compareStrToStr s1 s2 ord
-  | (firstarg == Nothing) && (secondarg == Nothing) = return $ (s1 `compare` s2) == ord
+  | (firstarg == Nothing) || (secondarg == Nothing) = return $ (s1 `compare` s2) == ord
   | otherwise = return $ (fromJust $ (fmap compare firstarg) <*> secondarg) == ord
   where
     firstarg  = readDoubleOrString s1
