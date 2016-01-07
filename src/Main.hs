@@ -22,6 +22,7 @@ import           System.Console.Readline
 import           System.Directory
 import           System.Environment
 import           System.Exit
+import           System.FilePath.Glob     (glob)
 import           System.FilePath.Posix
 import           System.IO
 import           System.Posix.Signals     (Handler (..), installHandler,
@@ -34,12 +35,10 @@ import           Safe
 import           Parser
 import           Types
 ---------------------------------------------------------------------
-
+io ::  MonadIO m => IO a -> m a
+io = liftIO
 
 ---------------------------------------------------------------------
-
-glob :: FilePath -> IO [FilePath]
-glob = getDirectoryContents
 
 
 cwd :: IO FilePath
@@ -50,22 +49,22 @@ isBuiltin = (`elem` ["cd"])
 
 runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
-  home <- liftIO $ getEnv "HOME"
-  pwd <- liftIO $ cwd
+  home <- io $ getEnv "HOME"
+  pwd <- io $ cwd
   let arg = headDef "" as
       dir = pwd </> arg
-  dirp <- liftIO $ doesDirectoryExist dir
-  if | not dirp             -> do liftIO $ print $ "not a directory: " ++ dir
+  dirp <- io $ doesDirectoryExist dir
+  if | not dirp             -> do io $ print $ "not a directory: " ++ dir
                                   failure 1
-     | null as              -> do liftIO $ setCurrentDirectory home
+     | null as              -> do io $ setCurrentDirectory home
                                   success
      | arg == "."           -> do success
-     | arg == ".."          -> do liftIO $ setCurrentDirectory $ takeDirectory pwd
+     | arg == ".."          -> do io $ setCurrentDirectory $ takeDirectory pwd
                                   success
      | "-" `isPrefixOf` arg -> do success
-     | isRelative arg       -> do liftIO $ setCurrentDirectory $ dir
+     | isRelative arg       -> do io $ setCurrentDirectory $ dir
                                   success
-     | otherwise            -> do liftIO $ setCurrentDirectory $ arg
+     | otherwise            -> do io $ setCurrentDirectory $ arg
                                   success
 
 success :: Eval Val
@@ -78,7 +77,7 @@ failure = return . ExitFailure
 
 runCom :: String -> [String] -> Eval Val
 runCom c as = do
-  rval <- liftIO $ runProc $ proc_ c as
+  rval <- io $ runProc $ proc_ c as
   return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. ls > file
@@ -88,27 +87,27 @@ runCom c as = do
 runComRedirOut :: Bool -> String -> [String] -> FilePath -> Eval Val
 runComRedirOut app c as p = do
   h <- if app
-       then liftIO $ openFile p AppendMode
-       else liftIO $ openFile p WriteMode
-  rval <- liftIO $ runProc $ (proc_ c as) {std_out = UseHandle h}
+       then io $ openFile p AppendMode
+       else io $ openFile p WriteMode
+  rval <- io $ runProc $ (proc_ c as) {std_out = UseHandle h}
   return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. ls < file
 runComRedirIn :: String -> [String] -> FilePath -> Eval Val
 runComRedirIn c as p = do
-  h <- liftIO $ openFile p ReadMode
-  rval <- liftIO $ runProc $ (proc_ c as) {std_in = UseHandle h}
+  h <- io $ openFile p ReadMode
+  rval <- io $ runProc $ (proc_ c as) {std_in = UseHandle h}
   return $ fromMaybe (ExitFailure 127) rval
 
 -- e.g. echo "hi" | cat
 -- todo error check
 runComsPiped :: String -> [String] -> String -> [String] -> Eval Val
 runComsPiped c as d bs = do
- hs <- liftIO $ runProcReturningHandles $ (proc_ c as) {std_out = CreatePipe}
+ hs <- io $ runProcReturningHandles $ (proc_ c as) {std_out = CreatePipe}
  let pout = fromJust $  view _2  $ fromJust hs
- hs' <- liftIO $ runProcReturningHandles $ (proc_ d bs) {std_in = UseHandle pout}
- liftIO $ waitForProcess (view _4 $ fromJust hs)
- liftIO $ waitForProcess (view _4 $ fromJust hs')
+ hs' <- io $ runProcReturningHandles $ (proc_ d bs) {std_in = UseHandle pout}
+ io $ waitForProcess (view _4 $ fromJust hs)
+ io $ waitForProcess (view _4 $ fromJust hs')
  return $ ExitSuccess
 
 
@@ -211,7 +210,7 @@ lookup2 a1 a2 e = case M.lookup e a2 of -- call with env, then vars
 
 evalComArgs :: StrOrRef -> [StrOrRef] -> Eval (String, [String])
 evalComArgs c as = do
-  e <- liftIO $ getEnvironment
+  e <- io $ getEnvironment
   s <- get
   let c' = case c of
               Str str -> str
@@ -224,7 +223,10 @@ evalComArgs c as = do
                            Str str -> str
                            Ref r -> lookup2 e (view vars s) r
                   ) as
-  return (c''', args)
+  args_globbed <- io $ mapM (\a -> if elem '*' a
+                                       then glob a
+                                       else return [a]) args
+  return (c''', concat args_globbed)
 
 -- TODO FRANK when eval strliteral -> check state if string is stored as value first
 -- example: a = 5
@@ -251,7 +253,7 @@ evalCond (Eql (Str s1) (Str s2)) = compareStrToStr s1 s2 EQ
 
 compareRefToRef :: String -> String -> Ordering -> Eval Bool
 compareRefToRef r1 r2 ord = do
-  e <- liftIO $ getEnvironment
+  e <- io $ getEnvironment
   s <- get
   let val1 = lookup2 e (view vars s) r1
       val2 = lookup2 e (view vars s) r2
@@ -259,7 +261,7 @@ compareRefToRef r1 r2 ord = do
 
 compareRefToStr :: String -> String -> Ordering -> Eval Bool
 compareRefToStr r s ord = do
-  e <- liftIO $ getEnvironment
+  e <- io $ getEnvironment
   st <- get
   let val1 = lookup2 e (view vars st) r
   compareStrToStr val1 s ord
