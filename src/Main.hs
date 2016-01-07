@@ -52,7 +52,7 @@ runBuiltin :: String -> [String] -> Eval Val
 runBuiltin "cd" as = do
   home <- liftIO $ getEnv "HOME"
   pwd <- liftIO $ cwd
-  let arg = head as
+  let arg = headDef "" as
       dir = pwd </> arg
   dirp <- liftIO $ doesDirectoryExist dir
   if | not dirp             -> do liftIO $ print $ "not a directory: " ++ dir
