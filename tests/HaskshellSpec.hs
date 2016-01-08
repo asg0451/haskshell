@@ -27,12 +27,6 @@ runHaskshellState :: String -> InternalState -> IO (Val, InternalState)
 runHaskshellState s state = runStateT (eval ast) state
     where ast = plex s
 
-isExitSuccess e = e `shouldBe` ExitSuccess
-
-isExitFailure e = e `shouldSatisfy` \case
-                  ExitFailure _ -> True
-                  otherwise -> False
-
 
 spec :: Spec
 spec = do
@@ -63,11 +57,11 @@ spec = do
          describe "pushd, popd" $ do
                           it "can pushd" $ do
                                     (res, _) <- runHaskshell "pushd ."
-                                    isExitSuccess res
+                                    res `shouldBe` ExitSuccess
 
                           it "can popd" $ do
                                     (res, _) <- runHaskshell "popd"
-                                    isExitSuccess res
+                                    res `shouldBe` ExitSuccess
 
                           it "pushd/popd's correctly once" $ do
                                     home <- getEnv "HOME"
@@ -83,17 +77,19 @@ spec = do
                           it "can alias" $ do
                               -- assume echo works
                               (res1, state) <- runHaskshell "alias wat = echo"
-                              isExitSuccess res1
+                              res1 `shouldBe` ExitSuccess
                               (res2, _) <- runHaskshellState "wat \"hi\"" state
-                              isExitSuccess res2
+                              res2 `shouldBe` ExitSuccess
 
                           it "can unalias" $ do
                               -- assume wat is not a command
                               (res1, state1) <- runHaskshell "alias wat = echo"
-                              isExitSuccess res1
+                              res1 `shouldBe` ExitSuccess
                               (res2, state2) <- runHaskshellState "wat \"hi\"" state1
-                              isExitSuccess res2
+                              res2 `shouldBe` ExitSuccess
                               (res3, state3) <- runHaskshellState "unalias wat" state2
-                              isExitSuccess res3
+                              res3 `shouldBe` ExitSuccess
                               (res4, state4) <- runHaskshellState "wat \"hi\"" state3
-                              isExitFailure res4
+                              res4 `shouldSatisfy` \case
+                                   ExitFailure _ -> True
+                                   otherwise -> False
