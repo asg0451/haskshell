@@ -14,3 +14,10 @@ runHaskshell s = runStateT (eval ast) initialState
 runHaskshellState :: String -> InternalState -> IO (Val, InternalState)
 runHaskshellState s state = runStateT (eval ast) state
     where ast = plex s
+
+
+runHaskshellAst :: Expression -> IO (Val, InternalState)
+runHaskshellAst e = runStateT (eval e) initialState
+
+runHaskshellAstState :: Expression -> InternalState -> IO (Val, InternalState)
+runHaskshellAstState e state = runStateT (eval e) state

@@ -1,5 +1,7 @@
 module VarsSpec (main, spec) where
 
+import           Control.Lens
+import           Data.Map
 import           System.Directory
 import           System.Environment
 import           System.Exit
@@ -25,10 +27,14 @@ spec :: Spec
 spec = do
   describe "vars" $ do
          describe "setting/unsetting" $ do
-                      it "can set vars" $ do
-                                          -- assume "x" isnt a set var in the initial state
+                      it "can do var substitution with $" $ do
                                           (res, st) <- runHaskshell "x = 42"
                                           res `shouldBe` ExitSuccess
                                           (output, (res', st')) <- capture $ runHaskshellState "echo -n $x" st
                                           res' `shouldBe` ExitSuccess
                                           output `shouldBe` "42"
+
+                      it "can set vars" $ do
+                                          (res, st) <- runHaskshell "x = 42"
+                                          res `shouldBe` ExitSuccess
+                                          (st ^. vars) ! "x" `shouldBe` "42"
