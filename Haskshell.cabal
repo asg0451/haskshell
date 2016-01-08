@@ -84,6 +84,10 @@ Test-Suite Haskshell-Tests
 -- >= 1.2.3.1
                          , containers >= 0.5.5.0
                          , split
-                         , hspec
                          , Glob >= 0.7.5
                          , Haskshell
+                         , hspec
+                         , hspec-core
+                         , hspec-expectations
+-- for capturing io
+                         , silently

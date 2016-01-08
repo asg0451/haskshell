@@ -1,60 +1,61 @@
 {-# LANGUAGE LambdaCase #-}
 
-module HaskshellSpec (main, spec) where
+module BuiltInsSpec (main, spec) where
 
-import           Control.Monad.State.Lazy
-import           Data.Maybe
 import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.IO
 import           System.Process
-import           Test.Hspec
 
-import           Haskshell                as H
-import           Lexer                    as L
-import           Parser                   as P
-import           Types                    as T
+import           Test.Hspec
+import           Test.Hspec.Core.Hooks
+import           Test.Hspec.Expectations
+
+import           Haskshell               as H
+import           Lexer                   as L
+import           Parser                  as P
+import           TestUtils
+import           Types                   as T
 
 main :: IO ()
 main = hspec spec
-
-runHaskshell :: String -> IO (Val, InternalState)
-runHaskshell s = runStateT (eval ast) initialState
-    where ast = plex s
-
-runHaskshellState :: String -> InternalState -> IO (Val, InternalState)
-runHaskshellState s state = runStateT (eval ast) state
-    where ast = plex s
 
 
 spec :: Spec
 spec = do
   describe "builtins" $ do
          describe "regular cd functionality" $ do
+                          home <- runIO $ getEnv "HOME"
+
                           it "goes to home when no args" $ do
-                                         home <- getEnv "HOME"
                                          setCurrentDirectory "/tmp"
 
                                          runHaskshell "cd"
                                          dir' <- getCurrentDirectory
                                          dir' `shouldBe` home
                           it "goes to given dir" $ do
-                                                 home <- getEnv "HOME"
                                                  setCurrentDirectory "/tmp"
-
                                                  runHaskshell "cd /etc"
                                                  dir' <- getCurrentDirectory
                                                  dir' `shouldBe` "/etc"
 
                           it "cd ..'s correctly" $ do
                                                  setCurrentDirectory "/tmp"
-
                                                  runHaskshell "cd .."
                                                  dir <- getCurrentDirectory
                                                  dir `shouldBe` "/"
 
-         describe "pushd, popd" $ do
+                          it "cd -'s correctly" $ do
+                                                 setCurrentDirectory "/tmp"
+                                                 setCurrentDirectory home
+                                                 (res, _) <- runHaskshell "cd -"
+                                                 res `shouldBe` ExitSuccess
+                                                 dir <- getCurrentDirectory
+                                                 dir `shouldBe` "/tmp"
+
+
+         describe "pushd, popd functionality" $ do
                           it "can pushd" $ do
                                     (res, _) <- runHaskshell "pushd ."
                                     res `shouldBe` ExitSuccess
