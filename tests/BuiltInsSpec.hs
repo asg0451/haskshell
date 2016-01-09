@@ -68,9 +68,11 @@ spec = do
                                     home <- getEnv "HOME"
                                     setCurrentDirectory "/tmp"
 
-                                    runHaskshell "pushd ."
+                                    (res, _) <- runHaskshell "pushd ."
+                                    res `shouldBe` ExitSuccess
                                     setCurrentDirectory home
-                                    runHaskshell "popd"
+                                    (res', _) <- runHaskshell "popd"
+                                    res' `shouldBe` ExitSuccess
                                     dir <- getCurrentDirectory
                                     dir `shouldBe` "/tmp"
 

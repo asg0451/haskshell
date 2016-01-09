@@ -4,16 +4,14 @@
    - its lexer equivalent is called Alex, which i just implemented use of
    - install happy and alex using:
      #+BEGIN_EXAMPLE
-     cabal update
-     cabal install happy
-     cabal install alex
+     stack install happy alex
      #+END_EXAMPLE
-     it may sit there for a while, but it's doing stuff
+     these will probably be installed when you run =stack install=, but I'm not really sure.
 ** Requirements
-   - This program requires stack, cabal, alex and happy, and ghc obviously
+   - This program requires stack to install dependencies and compile properly.
    - ghc and cabal can be install using pacman on arch, probably apt-get on ubuntu or whatever.
    - stack can be installed idk from the website or whatever
-   - otherwise stack will take care of libraries when you run the command:
+   - otherwise stack will take care of libraries when you run the command =stack install=
 ** Building
 - just run
      #+BEGIN_EXAMPLE
@@ -22,20 +20,19 @@
 *** Remember
     To install libraries manually, run
     #+BEGIN_EXAMPLE
-    stack install package
+    stack install <package>
     #+END_EXAMPLE
 ** Running
-   stack will install it into $HOME/.local/bin
+   stack will install binaries into $HOME/.local/bin, so add this to your path if you want
 * TODOs
   - [X] switch from system.posix.process to system.process, for return val and pipe support
     + hopefully this will fix the order of execution of commands not being guaranteeable, i.e. not forked
-  - [ ] problem -- varRef vs single word commands. possible solution:
+  - [X] problem -- varRef vs single word commands. possible solution:
     - make if-stmts only contain exprs if theyre wrapped in brackets of some sort
-  - [ ] make ComArgs take Literals instead of raw strings ?
-  - [ ] think about ambiguity, e.g. 'if 1 == 2 then echo hi ; a = 2' gets parsed as 'if .. then ( echo hi ; a = 2)'
+  - [X] think about ambiguity, e.g. 'if 1 == 2 then echo hi ; a = 2' gets parsed as 'if .. then ( echo hi ; a = 2)'
     - edit %left precedence accordingly
   - [X] find a better way to handle empty lines
   - [X] start using alex. adding '==' support broke assignment without spaces
   - [ ] seperate Expression datatype into Expression and Literal?
-  - [ ] make variable evaluation explicit
+  - [X] make variable evaluation explicit
   - [ ] other things that are listed throughout the code
