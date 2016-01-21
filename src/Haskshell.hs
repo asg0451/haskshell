@@ -18,7 +18,6 @@ import           Data.List.Split
 import qualified Data.Map.Lazy                       as M
 import           Data.Maybe                          (fromJust, fromMaybe)
 import           Data.Monoid
-import           System.Console.Readline
 import           System.Directory
 import           System.Environment
 import           System.Exit
@@ -294,28 +293,23 @@ readDoubleOrString s = readMay s :: Maybe Double
 -- TODO redirection
 hmain :: IO ()
 hmain = do
-  histFile <- getHistFile
+  home <- getEnv "HOME"
   setupHandlers
-  c <- readFile histFile
-  let pastHistory = lines c
-  mapM_ addHistory pastHistory
-  void $ iterateM' (iteration histFile) $ Just initialState
-
-      where iteration histFile prev =  do
-              line <- readline ">> "
+  void $ runInputT (haskelineSettings home) $ iterateM' iteration (Just initialState)
+      where iteration :: (Maybe InternalState) -> InputT IO (Maybe InternalState)
+            iteration prev = do
+              line <- getInputLine ">> "
               case line of
-                Just l -> do addHistory l  -- for readline
-                             when (not $ null l) $ appendFile histFile $ l ++ "\n"
-                             astM <- cleanup $ plex l
+                Just l -> do astM <- io $ cleanup $ plex l
                              case astM of
                                Just ast -> do
-                                         putStrLn $ green $ show ast
-                                         out <- runStateT (eval ast) (fromJust prev)
-                                         putStrLn $ purple $ show out
+                                         outputStrLn $ green $ show ast
+                                         out <- io $ runStateT (eval ast) (fromJust prev)
+                                         outputStrLn $ purple $ show out
                                          let laststate = snd out
                                          return $ Just laststate
                                Nothing -> do
-                                         putStrLn $ "Lexical Error: " ++ l
+                                         outputStrLn $ "Lexical Error: " ++ l
                                          return $ prev
                 Nothing -> return Nothing
 
@@ -326,12 +320,10 @@ initialState =
                      , _aliases   = M.fromList [("ls", "ls --color")]
                      }
 
-getHistFile :: IO String
-getHistFile = do  home <- getEnv "HOME"
-                  let histFile = home ++ "/.HaskHistory"
-                  exist <- doesFileExist histFile
-                  when (not exist) $ writeFile histFile ""
-                  return histFile
+haskelineSettings h = setComplete (completeFilename) $ defaultSettings {
+                        autoAddHistory = True
+                      , historyFile = Just $ h </> ".HaskHistory"
+                    }
 
 setupHandlers :: IO ()
 setupHandlers = void $ do
@@ -343,10 +335,10 @@ setupHandlers = void $ do
   installHandler sigTSTP (Catch (print "ctrl-z" >> Ex.throwTo tid Ex.UserInterrupt)) Nothing
 
 
-iterateM' :: (Maybe a -> IO (Maybe a)) -> Maybe a -> IO (Maybe b)
+iterateM' :: (MonadIO m) => (Maybe a -> m (Maybe a)) -> Maybe a -> m (Maybe b)
 iterateM' f = g
     where g x = case x of
-                  Nothing -> putStrLn "" >> return Nothing
+                  Nothing -> io (putStrLn "") >> return Nothing
                   Just z  -> f (Just z) >>= g
 
 cleanup :: a -> IO (Maybe a)
