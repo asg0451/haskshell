@@ -7,28 +7,32 @@
 
 module Haskshell where
 
-import           Control.Concurrent       (myThreadId)
-import qualified Control.Exception        as Ex
+import           Control.Concurrent                  (myThreadId)
+import qualified Control.Exception                   as Ex
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.State.Lazy
 import           Data.Functor
-import           Data.List                (isPrefixOf)
+import           Data.List                           (isPrefixOf)
 import           Data.List.Split
-import qualified Data.Map.Lazy            as M
-import           Data.Maybe               (fromJust, fromMaybe)
+import qualified Data.Map.Lazy                       as M
+import           Data.Maybe                          (fromJust, fromMaybe)
 import           Data.Monoid
 import           System.Console.Readline
 import           System.Directory
 import           System.Environment
 import           System.Exit
-import           System.FilePath.Glob     (glob)
+import           System.FilePath.Glob                (glob)
 import           System.FilePath.Posix
 import           System.IO
-import           System.Posix.Signals     (Handler (..), installHandler,
-                                           keyboardSignal, sigTSTP)
-import           System.Process           hiding (cwd, env, proc)
-import qualified System.Process           as P (cwd, env)
+import           System.Posix.Signals                (Handler (..),
+                                                      installHandler,
+                                                      keyboardSignal, sigTSTP)
+import           System.Process                      hiding (cwd, env, proc)
+import qualified System.Process                      as P (cwd, env)
+
+import           System.Console.Haskeline
+import           System.Console.Haskeline.Completion
 
 import           Safe
 
@@ -55,14 +59,14 @@ runBuiltin "cd" as = do
   let arg = headDef "" as
       dir = pwd </> arg
   dirp <- io $ doesDirectoryExist dir
-  if | not dirp             -> do io $ print $ "not a directory: " ++ dir
+  if | "-" `isPrefixOf` arg -> do success
+     | not dirp             -> do io $ print $ "not a directory: " ++ dir
                                   failure 1
      | null as              -> do io $ setCurrentDirectory home
                                   success
      | arg == "."           -> do success
      | arg == ".."          -> do io $ setCurrentDirectory $ takeDirectory pwd
                                   success
-     | "-" `isPrefixOf` arg -> do success
      | isRelative arg       -> do io $ setCurrentDirectory $ dir
                                   success
      | otherwise            -> do io $ setCurrentDirectory $ arg
