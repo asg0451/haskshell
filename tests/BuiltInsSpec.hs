@@ -26,91 +26,87 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "builtins" $ do
-         describe "regular cd functionality" $ do
-                          home <- runIO $ getEnv "HOME"
+    describe "regular cd functionality" $ do
+      home <- runIO $ getEnv "HOME"
+      it "goes to home when no args" $ do
+        setCurrentDirectory "/tmp"
+        runHaskshell "cd"
+        dir' <- getCurrentDirectory
+        dir' `shouldBe` home
 
-                          it "goes to home when no args" $ do
-                                         setCurrentDirectory "/tmp"
+      it "goes to given dir" $ do
+        setCurrentDirectory "/tmp"
+        runHaskshell "cd /etc"
+        dir' <- getCurrentDirectory
+        dir' `shouldBe` "/etc"
 
-                                         runHaskshell "cd"
-                                         dir' <- getCurrentDirectory
-                                         dir' `shouldBe` home
-                          it "goes to given dir" $ do
-                                                 setCurrentDirectory "/tmp"
-                                                 runHaskshell "cd /etc"
-                                                 dir' <- getCurrentDirectory
-                                                 dir' `shouldBe` "/etc"
+      it "cd ..'s correctly" $ do
+        setCurrentDirectory "/tmp"
+        runHaskshell "cd .."
+        dir <- getCurrentDirectory
+        dir `shouldBe` "/"
 
-                          it "cd ..'s correctly" $ do
-                                                 setCurrentDirectory "/tmp"
-                                                 runHaskshell "cd .."
-                                                 dir <- getCurrentDirectory
-                                                 dir `shouldBe` "/"
-
-                          it "cd -'s correctly" $ do
-                                                 setCurrentDirectory "/tmp"
-                                                 setCurrentDirectory home
-                                                 (res, _) <- runHaskshell "cd -"
-                                                 res `shouldBe` ExitSuccess
-                                                 dir <- getCurrentDirectory
-                                                 dir `shouldBe` "/tmp"
+      it "cd -'s correctly" $ do
+        setCurrentDirectory "/tmp"
+        setCurrentDirectory home
+        (res, _) <- runHaskshell "cd -"
+        res `shouldBe` ExitSuccess
+        dir <- getCurrentDirectory
+        dir `shouldBe` "/tmp"
 
 
-         describe "pushd, popd functionality" $ do
-                          it "can pushd" $ do
-                                    (res, _) <- runHaskshell "pushd ."
-                                    res `shouldBe` ExitSuccess
+    describe "pushd, popd functionality" $ do
+      it "can pushd" $ do
+        (res, _) <- runHaskshell "pushd ."
+        res `shouldBe` ExitSuccess
 
-                          it "can popd" $ do
-                                    (res, _) <- runHaskshell "popd"
-                                    res `shouldBe` ExitSuccess
+      it "can popd" $ do
+        (res, _) <- runHaskshell "popd"
+        res `shouldBe` ExitSuccess
 
-                          it "pushd/popd's correctly once" $ do
-                                    home <- getEnv "HOME"
-                                    setCurrentDirectory "/tmp"
+      it "pushd/popd's correctly once" $ do
+        home <- getEnv "HOME"
+        setCurrentDirectory "/tmp"
 
-                                    (res, _) <- runHaskshell "pushd ."
-                                    res `shouldBe` ExitSuccess
-                                    setCurrentDirectory home
-                                    (res', _) <- runHaskshell "popd"
-                                    res' `shouldBe` ExitSuccess
-                                    dir <- getCurrentDirectory
-                                    dir `shouldBe` "/tmp"
+        (res, _) <- runHaskshell "pushd ."
+        res `shouldBe` ExitSuccess
+        setCurrentDirectory home
+        (res', _) <- runHaskshell "popd"
+        res' `shouldBe` ExitSuccess
+        dir <- getCurrentDirectory
+        dir `shouldBe` "/tmp"
 
-         describe "alias" $ do
-                          it "can alias" $ do
-                              -- assume echo works
-                              (res1, state) <- runHaskshell "alias wat = echo"
-                              res1 `shouldBe` ExitSuccess
-                              (res2, _) <- runHaskshellState "wat \"hi\"" state
-                              res2 `shouldBe` ExitSuccess
+    describe "alias" $ do
+      it "can alias" $ do
+        -- assume echo works
+        (res1, state) <- runHaskshell "alias wat = echo"
+        res1 `shouldBe` ExitSuccess
+        (res2, _) <- runHaskshellState "wat \"hi\"" state
+        res2 `shouldBe` ExitSuccess
 
-                          it "can unalias" $ do
-                              -- assume wat is not a command
-                              (res1, state1) <- runHaskshell "alias wat = echo"
-                              res1 `shouldBe` ExitSuccess
-                              (res2, state2) <- runHaskshellState "wat \"hi\"" state1
-                              res2 `shouldBe` ExitSuccess
-                              (res3, state3) <- runHaskshellState "unalias wat" state2
-                              res3 `shouldBe` ExitSuccess
-                              (res4, state4) <- runHaskshellState "wat \"hi\"" state3
-                              res4 `shouldSatisfy` \case
-                                   ExitFailure _ -> True
-                                   otherwise -> False
+      it "can unalias" $ do
+        -- assume wat is not a command
+        (res1, state1) <- runHaskshell "alias wat = echo"
+        res1 `shouldBe` ExitSuccess
+        (res2, state2) <- runHaskshellState "wat \"hi\"" state1
+        res2 `shouldBe` ExitSuccess
+        (res3, state3) <- runHaskshellState "unalias wat" state2
+        res3 `shouldBe` ExitSuccess
+        (res4, state4) <- runHaskshellState "wat \"hi\"" state3
+        res4 `shouldNotBe` ExitSuccess
 
-         describe "redirection" $ do
-           before_ (void $ cmd "rm hi.txt") $ do
+    describe "redirection" $ do
+      before_ (void $ cmd "rm hi.txt") $ do
+        it "can write out" $ do
+          setCurrentDirectory "/tmp"
+          (res1, state) <- runHaskshell "echo -n hi > hi.txt"
+          res1 `shouldBe` ExitSuccess
+          contents <- cmd "cat hi.txt"
+          (length contents `seq` contents) `shouldBe` "hi"
 
-             it "can write out" $ do
-               setCurrentDirectory "/tmp"
-               (res1, state) <- runHaskshell "echo -n hi > hi.txt"
-               res1 `shouldBe` ExitSuccess
-               contents <- cmd "cat hi.txt"
-               (length contents `seq` contents) `shouldBe` "hi"
-
-             it "can read in" $ do
-               setCurrentDirectory "/tmp"
-               cmd "echo -n hi > hi.txt"
-               (stdout, (res1, state)) <- capture $ runHaskshell "cat < hi.txt"
-               res1 `shouldBe` ExitSuccess
-               stdout `shouldBe` "hi"
+        it "can read in" $ do
+          setCurrentDirectory "/tmp"
+          cmd "echo -n hi > hi.txt"
+          (stdout, (res1, state)) <- capture $ runHaskshell "cat < hi.txt"
+          res1 `shouldBe` ExitSuccess
+          stdout `shouldBe` "hi"
