@@ -1,16 +1,18 @@
 {
 module Lexer (lexer, Token(..)) where
+import Data.List.Utils (replace)
+-- TODO: better word lexing, incl escape characters
 }
 
 %wrapper "basic"
 
 $digit = [0-9]
 $alpha = [a-zA-Z\._]
-$word  = [a-zA-Z\.\/_\-0-9]
+$word  = [a-zA-Z\.\/_\-0-9\(\)\,]
 $newline = [\n]
 
 tokens :-
-
+    $word+[\\][\ ]                      { TokWord . unescapeSpace}
     $newline+                           { const TokNL }
     \"(\\.|[^\"])*\"                    { TokWord . stripQuotes }
     $white+				;
@@ -67,5 +69,8 @@ lexer = alexScanTokens
 
 stripQuotes :: String -> String
 stripQuotes = reverse . dropWhile (== '\"') . reverse . dropWhile (== '\"')
+
+unescapeSpace :: String -> String
+unescapeSpace s = replace "\\" "" s
 
 }
