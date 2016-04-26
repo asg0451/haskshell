@@ -9,7 +9,7 @@ module Haskshell where
 
 import           Control.Concurrent                  (myThreadId)
 import qualified Control.Exception                   as Ex
-import           Control.Lens
+import           Control.Lens                        hiding (Empty)
 import           Control.Monad
 import           Control.Monad.State.Lazy
 import           Data.Functor

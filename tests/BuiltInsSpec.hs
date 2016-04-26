@@ -6,10 +6,10 @@ import           System.Directory
 import           System.Environment
 import           System.Exit
 import           System.IO
+import           System.IO.Silently
 import           System.Process
 
 import           Test.Hspec
-import           Test.Hspec.Core.Hooks
 import           Test.Hspec.Expectations
 
 import           Haskshell               as H
@@ -17,6 +17,7 @@ import           Lexer                   as L
 import           Parser                  as P
 import           TestUtils
 import           Types                   as T
+
 
 main :: IO ()
 main = hspec spec
@@ -96,3 +97,20 @@ spec = do
                               res4 `shouldSatisfy` \case
                                    ExitFailure _ -> True
                                    otherwise -> False
+
+         describe "redirection" $ do
+           before_ (void $ cmd "rm hi.txt") $ do
+
+             it "can write out" $ do
+               setCurrentDirectory "/tmp"
+               (res1, state) <- runHaskshell "echo -n hi > hi.txt"
+               res1 `shouldBe` ExitSuccess
+               contents <- cmd "cat hi.txt"
+               (length contents `seq` contents) `shouldBe` "hi"
+
+             it "can read in" $ do
+               setCurrentDirectory "/tmp"
+               cmd "echo -n hi > hi.txt"
+               (stdout, (res1, state)) <- capture $ runHaskshell "cat < hi.txt"
+               res1 `shouldBe` ExitSuccess
+               stdout `shouldBe` "hi"
